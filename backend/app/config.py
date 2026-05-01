@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     battery_cost_rs_kwh: float = 28_000.0       # Rs per kWh storage
     maintenance_cost_rs_kw_year: float = 1_200.0
 
+    # Panel & system constants
+    solar_panel_wattage: int = 400              # Wp per panel
+    solar_panel_footprint_m2: float = 2.0       # m² per panel (panel + spacing)
+    grid_offset_factor: float = 0.85            # fraction of bill offset by solar
+
     # Financial assumptions
     inflation_rate: float = 0.045               # 4.5% Mauritius CPI
     discount_rate: float = 0.08                 # 8% WACC

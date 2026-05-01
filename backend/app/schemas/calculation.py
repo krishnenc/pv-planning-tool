@@ -6,6 +6,7 @@ class CalculationRequest(BaseModel):
     monthly_kwh: float
     roof_area_m2: Optional[float] = None
     include_battery: bool = False
+    include_explanations: bool = False
 
     @field_validator("monthly_kwh")
     @classmethod
@@ -19,6 +20,22 @@ class RoofFeasibility(BaseModel):
     required_m2: float
     available_m2: Optional[float]
     status: str  # "ok" | "limited" | "unknown"
+
+
+class ExplainStep(BaseModel):
+    label: str
+    expr: str
+    result: str
+
+
+class MetricExplanation(BaseModel):
+    key: str
+    label: str
+    formula: str
+    inputs: list[dict[str, str]]
+    steps: list[ExplainStep]
+    result: str
+    unit: str
 
 
 class CalculationResponse(BaseModel):
@@ -35,3 +52,4 @@ class CalculationResponse(BaseModel):
     annual_savings_rs: float
     payback_years: float
     roi_25yr_pct: float
+    explanations: Optional[dict[str, MetricExplanation]] = None

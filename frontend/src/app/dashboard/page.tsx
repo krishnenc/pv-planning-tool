@@ -129,6 +129,28 @@ const SEED_APPLIANCES: Omit<Appliance, "id">[] = [
   { name: "Water Heater", wattage: "2000", hoursPerDay: "2", quantity: "1" },
 ]
 
+const INPUTS_KEY = "solariq_inputs"
+
+interface SavedInputs {
+  monthlyKwh: string
+  roofArea: string
+  includeBattery: boolean
+  advancedMode: boolean
+  appliances: Appliance[]
+  hasEV: boolean
+  evKmPerDay: string
+  detectedKwh: number | null
+}
+
+function loadInputs(): SavedInputs | null {
+  try {
+    const raw = localStorage.getItem(INPUTS_KEY)
+    return raw ? (JSON.parse(raw) as SavedInputs) : null
+  } catch {
+    return null
+  }
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -136,20 +158,28 @@ export default function DashboardPage() {
   const nextId = useRef(SEED_APPLIANCES.length + 1)
 
   // Energy
-  const [monthlyKwh, setMonthlyKwh] = useState("")
-  const [advancedMode, setAdvancedMode] = useState(false)
+  const [monthlyKwh, setMonthlyKwh] = useState(() => loadInputs()?.monthlyKwh ?? "")
+  const [advancedMode, setAdvancedMode] = useState(() => loadInputs()?.advancedMode ?? false)
 
   // Appliances
-  const [appliances, setAppliances] = useState<Appliance[]>(() =>
-    SEED_APPLIANCES.map((a, i) => ({ ...a, id: i + 1 }))
-  )
+  const [appliances, setAppliances] = useState<Appliance[]>(() => {
+    const saved = loadInputs()?.appliances
+    if (saved?.length) {
+      nextId.current = Math.max(...saved.map((a) => a.id)) + 1
+      return saved
+    }
+    return SEED_APPLIANCES.map((a, i) => ({ ...a, id: i + 1 }))
+  })
 
   // EV
-  const [hasEV, setHasEV] = useState(false)
-  const [evKmPerDay, setEvKmPerDay] = useState("")
+  const [hasEV, setHasEV] = useState(() => loadInputs()?.hasEV ?? false)
+  const [evKmPerDay, setEvKmPerDay] = useState(() => loadInputs()?.evKmPerDay ?? "")
 
   // Roof
-  const [roofArea, setRoofArea] = useState("")
+  const [roofArea, setRoofArea] = useState(() => loadInputs()?.roofArea ?? "")
+
+  // Battery
+  const [includeBattery, setIncludeBattery] = useState(() => loadInputs()?.includeBattery ?? false)
 
   // Calculation
   const [isCalculating, setIsCalculating] = useState(false)
@@ -157,9 +187,10 @@ export default function DashboardPage() {
 
   // Bill upload
   type UploadStatus = "idle" | "uploading" | "success" | "error"
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle")
+  const savedDetected = loadInputs()?.detectedKwh ?? null
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>(savedDetected !== null ? "success" : "idle")
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [detectedKwh, setDetectedKwh] = useState<number | null>(null)
+  const [detectedKwh, setDetectedKwh] = useState<number | null>(savedDetected)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ── Appliance helpers ──────────────────────────────────────────────────────
@@ -212,9 +243,22 @@ export default function DashboardPage() {
       const results = await api.calculate({
         monthly_kwh,
         roof_area_m2: roofArea ? parseFloat(roofArea) : null,
-        include_battery: false,
+        include_battery: includeBattery,
       })
       localStorage.setItem("solariq_results", JSON.stringify(results))
+      localStorage.setItem(
+        INPUTS_KEY,
+        JSON.stringify({
+          monthlyKwh,
+          roofArea,
+          includeBattery,
+          advancedMode,
+          appliances,
+          hasEV,
+          evKmPerDay,
+          detectedKwh,
+        } satisfies SavedInputs),
+      )
       router.push("/results")
     } catch (err) {
       setCalcError(err instanceof Error ? err.message : "Calculation failed")
@@ -654,6 +698,41 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">
               If unknown, we'll size the system based on your usage alone
             </p>
+          </CardContent>
+        </Card>
+
+        {/* ══ 4. Battery Storage ═══════════════════════════════════════════ */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-start gap-3">
+              <IconBadge emoji="🔋" bg="bg-violet-50" text="text-violet-700" />
+              <div>
+                <CardTitle className="text-base">Battery Storage</CardTitle>
+                <CardDescription>
+                  Add a battery to store excess solar and power your home at night
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label htmlFor="battery-toggle" className="cursor-pointer space-y-0.5">
+                <p className="text-sm font-medium">Include battery storage</p>
+                <p className="text-xs text-muted-foreground">
+                  Sized to cover one day of consumption · Rs 28,000 / kWh (2026)
+                </p>
+              </label>
+              <Toggle
+                id="battery-toggle"
+                checked={includeBattery}
+                onChange={setIncludeBattery}
+              />
+            </div>
+            {includeBattery && (
+              <p className="text-xs text-muted-foreground rounded-lg bg-violet-50/60 px-3 py-2">
+                Battery capacity will be calculated based on your daily energy needs. Cost and payback are updated in your results.
+              </p>
+            )}
           </CardContent>
         </Card>
 
