@@ -22,7 +22,8 @@ import { cn } from "@/lib/utils"
 
 interface Appliance {
   id: number
-  name: string
+  preset: string   // catalog key, or "other" for custom entry, or "" if not yet chosen
+  name: string     // resolved display name (catalog label or user-typed custom name)
   wattage: string
   hoursPerDay: string
   quantity: string
@@ -122,12 +123,86 @@ function SectionDivider({ label }: { label: string }) {
   )
 }
 
-// ─── Default seed data ───────────────────────────────────────────────────────
+// ─── Appliance catalog ────────────────────────────────────────────────────────
+
+const APPLIANCE_GROUPS: {
+  group: string
+  items: { key: string; label: string; wattage: string; hours: string }[]
+}[] = [
+  {
+    group: "Cooling & Climate",
+    items: [
+      { key: "ac_1500",  label: "Air Conditioner (1.5 kW)",      wattage: "1500", hours: "6"   },
+      { key: "ac_2500",  label: "Air Conditioner (2.5 kW)",      wattage: "2500", hours: "8"   },
+      { key: "fan",      label: "Ceiling / Standing Fan",         wattage: "75",   hours: "12"  },
+    ],
+  },
+  {
+    group: "Hot Water",
+    items: [
+      { key: "geyser_3", label: "Water Heater / Geyser (3 kW)",  wattage: "3000", hours: "1"   },
+      { key: "geyser_2", label: "Water Heater / Geyser (2 kW)",  wattage: "2000", hours: "2"   },
+    ],
+  },
+  {
+    group: "Kitchen",
+    items: [
+      { key: "fridge",       label: "Refrigerator (standard)",         wattage: "150",  hours: "24"  },
+      { key: "fridge_large", label: "Refrigerator (large / double-door)", wattage: "250", hours: "24" },
+      { key: "microwave",    label: "Microwave Oven",                  wattage: "1200", hours: "0.5" },
+      { key: "oven",         label: "Electric Oven / Cooker",          wattage: "2000", hours: "1"   },
+      { key: "induction",    label: "Induction Hob",                   wattage: "2000", hours: "1.5" },
+      { key: "kettle",       label: "Electric Kettle",                 wattage: "2000", hours: "0.3" },
+      { key: "dishwasher",   label: "Dishwasher",                      wattage: "1500", hours: "1"   },
+    ],
+  },
+  {
+    group: "Laundry",
+    items: [
+      { key: "washing",  label: "Washing Machine",    wattage: "500",  hours: "1"   },
+      { key: "dryer",    label: "Tumble Dryer",        wattage: "2500", hours: "1"   },
+      { key: "iron",     label: "Clothes Iron",        wattage: "2000", hours: "0.5" },
+    ],
+  },
+  {
+    group: "Entertainment & Office",
+    items: [
+      { key: "tv",         label: "Television (Smart TV)", wattage: "100", hours: "5" },
+      { key: "desktop_pc", label: "Desktop Computer",      wattage: "200", hours: "6" },
+      { key: "laptop",     label: "Laptop",                wattage: "60",  hours: "6" },
+    ],
+  },
+  {
+    group: "Lighting & Utilities",
+    items: [
+      { key: "lighting",    label: "Lighting (whole home)",    wattage: "200", hours: "6" },
+      { key: "pool_pump",   label: "Swimming Pool Pump",       wattage: "750", hours: "8" },
+      { key: "water_pump",  label: "Water Pump / Booster",     wattage: "750", hours: "2" },
+    ],
+  },
+  {
+    group: "Other",
+    items: [
+      { key: "other", label: "Other (specify below)", wattage: "", hours: "" },
+    ],
+  },
+]
+
+const APPLIANCE_MAP = Object.fromEntries(
+  APPLIANCE_GROUPS.flatMap((g) => g.items.map((i) => [i.key, i]))
+)
+
+// ─── Default seed data (always derived from catalog so labels stay in sync) ──
+
+function fromCatalog(key: string, quantity = "1"): Omit<Appliance, "id"> {
+  const { label, wattage, hours } = APPLIANCE_MAP[key]
+  return { preset: key, name: label, wattage, hoursPerDay: hours, quantity }
+}
 
 const SEED_APPLIANCES: Omit<Appliance, "id">[] = [
-  { name: "Air Conditioner", wattage: "1500", hoursPerDay: "6", quantity: "1" },
-  { name: "Refrigerator", wattage: "150", hoursPerDay: "24", quantity: "1" },
-  { name: "Water Heater", wattage: "2000", hoursPerDay: "2", quantity: "1" },
+  fromCatalog("ac_1500"),
+  fromCatalog("fridge"),
+  fromCatalog("geyser_2"),
 ]
 
 const INPUTS_KEY = "solariq_inputs"
@@ -168,7 +243,10 @@ export default function DashboardPage() {
     const saved = loadInputs()?.appliances
     if (saved?.length) {
       nextId.current = Math.max(...saved.map((a) => a.id)) + 1
-      return saved
+      return saved.map((a) => ({
+        ...(a as Appliance),
+        preset: (a as Appliance).preset ?? "other",  // migrate pre-dropdown entries
+      }))
     }
     return SEED_APPLIANCES.map((a, i) => ({ ...a, id: i + 1 }))
   })
@@ -210,7 +288,7 @@ export default function DashboardPage() {
     const id = nextId.current++
     setAppliances((prev) => [
       ...prev,
-      { id, name: "", wattage: "", hoursPerDay: "", quantity: "1" },
+      { id, preset: "", name: "", wattage: "", hoursPerDay: "", quantity: "1" },
     ])
   }
 
@@ -225,6 +303,23 @@ export default function DashboardPage() {
   ) => {
     setAppliances((prev) =>
       prev.map((a) => (a.id === id ? { ...a, [field]: value } : a))
+    )
+  }
+
+  const handlePresetChange = (id: number, key: string) => {
+    const item = APPLIANCE_MAP[key]
+    if (!item) return
+    setAppliances((prev) =>
+      prev.map((a) => {
+        if (a.id !== id) return a
+        return {
+          ...a,
+          preset: key,
+          name: key === "other" ? "" : item.label,
+          wattage: key === "other" ? a.wattage : item.wattage,
+          hoursPerDay: key === "other" ? a.hoursPerDay : item.hours,
+        }
+      })
     )
   }
 
@@ -308,6 +403,7 @@ export default function DashboardPage() {
               <Sun className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="font-bold text-lg text-primary">SolarMoris</span>
+            <span role="img" aria-label="Mauritius">🇲🇺</span>
           </a>
 
           <div className="flex items-center gap-2">
@@ -327,18 +423,16 @@ export default function DashboardPage() {
             >
               <Settings className="h-4 w-4" />
             </a>
-            {isAuthenticated && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { logout(); router.push("/") }}
-                className="gap-1.5 text-muted-foreground"
-                title="Sign out"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Sign out</span>
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { logout(); router.push("/") }}
+              className="gap-1.5 text-muted-foreground"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </Button>
             <Button
               size="sm"
               disabled={!canSubmit || isCalculating}
@@ -562,61 +656,82 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-2">
                     {appliances.map((a) => (
-                      <div
-                        key={a.id}
-                        className="grid grid-cols-[1fr_88px_76px_60px_36px] gap-2 items-center"
-                      >
-                        <Input
-                          placeholder="Air Conditioner"
-                          value={a.name}
-                          onChange={(e) =>
-                            updateAppliance(a.id, "name", e.target.value)
-                          }
-                          className="h-9 text-sm"
-                        />
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="1500"
-                          value={a.wattage}
-                          onChange={(e) =>
-                            updateAppliance(a.id, "wattage", e.target.value)
-                          }
-                          className="h-9 text-sm"
-                        />
-                        <Input
-                          type="number"
-                          min="0"
-                          max="24"
-                          placeholder="6"
-                          value={a.hoursPerDay}
-                          onChange={(e) =>
-                            updateAppliance(
-                              a.id,
-                              "hoursPerDay",
-                              e.target.value
-                            )
-                          }
-                          className="h-9 text-sm"
-                        />
-                        <Input
-                          type="number"
-                          min="1"
-                          placeholder="1"
-                          value={a.quantity}
-                          onChange={(e) =>
-                            updateAppliance(a.id, "quantity", e.target.value)
-                          }
-                          className="h-9 text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeAppliance(a.id)}
-                          aria-label={`Remove ${a.name || "appliance"}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                      <div key={a.id} className="space-y-1.5">
+                        <div className="grid grid-cols-[1fr_88px_76px_60px_36px] gap-2 items-center">
+                          {/* ── Appliance dropdown ── */}
+                          <select
+                            value={a.preset}
+                            onChange={(e) => handlePresetChange(a.id, e.target.value)}
+                            className={cn(
+                              "flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                              !a.preset && "text-muted-foreground"
+                            )}
+                          >
+                            <option value="" disabled>Select appliance…</option>
+                            {APPLIANCE_GROUPS.map((g) => (
+                              <optgroup key={g.group} label={g.group}>
+                                {g.items.map((item) => (
+                                  <option key={item.key} value={item.key}>
+                                    {item.label}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="W"
+                            value={a.wattage}
+                            onChange={(e) =>
+                              updateAppliance(a.id, "wattage", e.target.value)
+                            }
+                            className="h-9 text-sm"
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            max="24"
+                            placeholder="hrs"
+                            value={a.hoursPerDay}
+                            onChange={(e) =>
+                              updateAppliance(a.id, "hoursPerDay", e.target.value)
+                            }
+                            className="h-9 text-sm"
+                          />
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="1"
+                            value={a.quantity}
+                            onChange={(e) =>
+                              updateAppliance(a.id, "quantity", e.target.value)
+                            }
+                            className="h-9 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeAppliance(a.id)}
+                            aria-label={`Remove ${a.name || "appliance"}`}
+                            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        {/* Custom name input — only shown when "Other" is selected */}
+                        {a.preset === "other" && (
+                          <Input
+                            placeholder="Describe the appliance…"
+                            value={a.name}
+                            onChange={(e) =>
+                              updateAppliance(a.id, "name", e.target.value)
+                            }
+                            className="h-8 text-sm"
+                          />
+                        )}
                       </div>
                     ))}
                   </div>

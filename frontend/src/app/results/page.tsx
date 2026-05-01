@@ -277,6 +277,7 @@ export default function ResultsPage() {
               <Sun className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="font-bold text-lg text-primary">SolarMoris</span>
+            <span role="img" aria-label="Mauritius">🇲🇺</span>
           </a>
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-xs text-muted-foreground">

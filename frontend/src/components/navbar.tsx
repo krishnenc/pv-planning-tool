@@ -12,6 +12,7 @@ export function Navbar() {
           </div>
           <span className="font-bold text-lg tracking-tight">
             <span className="text-primary">SolarMoris</span>
+            <span role="img" aria-label="Mauritius">🇲🇺</span>
           </span>
         </div>
 
