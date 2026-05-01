@@ -1,0 +1,22 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/solar_dev.db
+backend/.env
+**/*.pyc
+**/*.pyo
+.mypy_cache/
+.pytest_cache/
+dist/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+
+# Misc
+.DS_Store
+*.log
+.env

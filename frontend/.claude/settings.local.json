@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(venv/bin/pip install *4)",
+      "Bash(venv/bin/pip install *)",
+      "Bash(venv/bin/python *)",
+      "Bash(venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:8000/openapi.json)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\([p for p in d['paths'] if 'auth' in p]\\)\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"full_name\":\"Test User\",\"password\":\"password123\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"password\":\"password123\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"password\":\"wrongpass\"}')",
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(grep -E \"\\\\.py$|^d\")",
+      "Bash(venv/bin/pip show *)",
+      "Bash(venv/bin/pytest *)",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"fresh@example.com\",\"full_name\":\"Fresh User\",\"password\":\"password123\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"fresh@example.com\",\"password\":\"password123\"}')",
+      "Bash(python3 *)",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"krishnenc@gmail.com\",\"password\":\"password123\"}')",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s -X POST http://localhost:3000/api/backend/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"proxytest@example.com\",\"full_name\":\"Proxy Test\",\"password\":\"password123\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/backend/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"proxytest@example.com\",\"password\":\"password123\"}')",
+      "Bash(pkill -f \"uvicorn app.main:app\")"
+    ]
+  }
+}
