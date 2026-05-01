@@ -264,7 +264,7 @@ export default function DashboardPage() {
   // Calculation
   const [isCalculating, setIsCalculating] = useState(false)
   const [calcError, setCalcError] = useState<string | null>(null)
-  const [hasCustomConfig] = useState(() => localStorage.getItem("solariq_config") !== null)
+  const [hasCustomConfig] = useState(() => typeof window !== "undefined" && localStorage.getItem("solariq_config") !== null)
 
   // Bill upload
   type UploadStatus = "idle" | "uploading" | "success" | "error"
