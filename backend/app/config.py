@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     )
 
     # App
-    app_name: str = "Solar Feasibility Tool – Mauritius"
+    app_name: str = "SolarMoris — Hybrid Solar Feasibility Tool"
     app_env: str = "development"
     app_debug: bool = False
     secret_key: str = "insecure-dev-key"

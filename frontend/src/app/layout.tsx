@@ -11,8 +11,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "SolarIQ Mauritius — Hybrid Solar Feasibility & ROI Planning",
-    template: "%s | SolarIQ Mauritius",
+    default: "SolarMoris — Hybrid Solar Feasibility & ROI Planning",
+    template: "%s | SolarMoris",
   },
   description:
     "Calculate hybrid solar system sizing, payback period, IRR, and CO₂ savings for Mauritius properties using CEB 2026 tariff bands.",
@@ -30,9 +30,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_MU",
-    title: "SolarIQ Mauritius",
+    title: "SolarMoris",
     description: "Hybrid Solar Feasibility & ROI Planning Tool — CEB 2026",
-    siteName: "SolarIQ",
+    siteName: "SolarMoris",
   },
 };
 

@@ -19,4 +19,5 @@ async def upload_bill(file: UploadFile = File(...)) -> BillParseResponse:
             f"Content type missing. Accepted: {', '.join(sorted(ALLOWED_TYPES))}",
         )
     result = parse_bill(await file.read(), file.content_type)
-    return BillParseResponse(monthly_kwh=result.monthly_kwh, estimated=result.estimated)
+    # confidence < 0.9 means the match came from a low-specificity keyword ("consumption" / "units")
+    return BillParseResponse(monthly_kwh=result.monthly_kwh, estimated=result.confidence < 0.9)

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import io
+import logging
 import re
 from dataclasses import dataclass
+from typing import Tuple
 
 from fastapi import HTTPException
 
@@ -19,77 +21,149 @@ try:
 except ImportError:
     _OCR_OK = False
 
+log = logging.getLogger(__name__)
+
 
 @dataclass
 class BillParseResult:
     monthly_kwh: float
-    estimated: bool = False
+    confidence: float
+    source: str  # "pdf_text" | "ocr"
 
 
-# Patterns tried in descending specificity — first valid match wins.
-# P1/P2 target the authoritative CEB label; P4/P5 are last-resort bare-numeric.
-_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"total\s+units?\s+consumed\s*:?\s*(\d[\d,]*\.?\d*)", re.IGNORECASE),
-    re.compile(r"units?\s+consumed\s*:?\s*(\d[\d,]*\.?\d*)", re.IGNORECASE),
-    re.compile(r"consumption\s*:?\s*(\d[\d,]*\.?\d*)\s*k?wh", re.IGNORECASE),
-    re.compile(r"(\d[\d,]*\.?\d*)\s*kwh", re.IGNORECASE),
-    re.compile(r"(\d[\d,]*\.?\d*)\s+units?(?!\s+consumed)", re.IGNORECASE),
-]
-_MIN_KWH: float = 1.0
-_MAX_KWH: float = 9999.0
-
+# --- CONFIG ---
 ALLOWED_TYPES = {"application/pdf", "image/jpeg", "image/png"}
-MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+MAX_BYTES = 10 * 1024 * 1024
+
+_MIN_KWH = 1.0
+_MAX_KWH = 9999.0
+
+# Keywords ranked by importance
+KEYWORDS = [
+    "total units consumed",
+    "units consumed",
+    "consumption",
+    "units"
+]
 
 
-def _parse_kwh(text: str) -> float:
-    for pat in _PATTERNS:
-        m = pat.search(text)
-        if m:
-            v = float(m.group(1).replace(",", ""))
-            if _MIN_KWH <= v <= _MAX_KWH:
-                return v
-    raise ValueError("no kWh value found in text")
+# --- CORE PARSER ---
+def _extract_kwh_with_context(text: str) -> Tuple[float, float]:
+    text_lower = text.lower()
+
+    for keyword in KEYWORDS:
+        for match in re.finditer(keyword, text_lower):
+            start = match.start()
+            window = text_lower[start:start + 120]  # look ahead window
+
+            num_match = re.search(r"(\d[\d,]*\.?\d*)", window)
+            if num_match:
+                value = float(num_match.group(1).replace(",", ""))
+
+                if _MIN_KWH <= value <= _MAX_KWH:
+                    # Confidence scoring
+                    if "total units consumed" in keyword:
+                        return value, 0.95
+                    elif "units consumed" in keyword:
+                        return value, 0.9
+                    elif "consumption" in keyword:
+                        return value, 0.8
+                    else:
+                        return value, 0.6
+
+    raise ValueError("No valid kWh found with keyword context")
 
 
+# --- PDF EXTRACTION ---
 def _pdf_text(data: bytes) -> str:
     if not _PDF_OK:
-        raise HTTPException(422, "PDF library not installed — run: pip install pdfplumber")
-    with pdfplumber.open(io.BytesIO(data)) as pdf:
-        return "\n".join(page.extract_text() or "" for page in pdf.pages)
+        raise HTTPException(422, "Install pdfplumber to parse PDF files")
+
+    try:
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
+            parts = []
+
+            for page in pdf.pages:
+                # Normal text
+                txt = page.extract_text() or ""
+                parts.append(txt)
+
+                # Extract tables (important for CEB)
+                for table in page.extract_tables() or []:
+                    for row in table:
+                        parts.append(" ".join(cell or "" for cell in row))
+
+            return "\n".join(parts)
+
+    except Exception as exc:
+        raise HTTPException(
+            422,
+            f"Could not read PDF ({type(exc).__name__}). Upload valid PDF or enter manually."
+        ) from exc
 
 
+# --- OCR EXTRACTION ---
 def _image_text(data: bytes) -> str:
     if not _OCR_OK:
         raise HTTPException(
             422,
-            "OCR not available — upload a PDF or enter kWh manually "
-            "(server needs: pip install pytesseract Pillow + sudo apt-get install tesseract-ocr)",
+            "OCR not available. Install pytesseract + Pillow + tesseract-ocr"
         )
+
     try:
-        return pytesseract.image_to_string(Image.open(io.BytesIO(data)), lang="eng")
+        img = Image.open(io.BytesIO(data))
+
+        # Preprocessing for better OCR
+        img = img.convert("L")  # grayscale
+
+        text = pytesseract.image_to_string(img, lang="eng")
+
+        return text
+
     except pytesseract.TesseractNotFoundError:
         raise HTTPException(
             422,
-            "OCR not available — upload a PDF or enter kWh manually "
-            "(sudo apt-get install tesseract-ocr)",
+            "Tesseract not installed on system"
         )
 
 
+# --- MAIN ENTRY ---
 def parse_bill(data: bytes, content_type: str) -> BillParseResult:
     if len(data) > MAX_BYTES:
-        raise HTTPException(413, "File too large — maximum 10 MB.")
+        raise HTTPException(413, "File too large (max 10MB)")
 
     mime = content_type.split(";")[0].strip().lower()
+
     if mime not in ALLOWED_TYPES:
-        raise HTTPException(415, f"Unsupported type '{mime}'. Accepted: PDF, JPEG, PNG.")
+        raise HTTPException(
+            415,
+            f"Unsupported type '{mime}'. Use PDF/JPEG/PNG."
+        )
 
-    text = _pdf_text(data) if mime == "application/pdf" else _image_text(data)
+    # Extract text
+    if mime == "application/pdf":
+        text = _pdf_text(data)
+        source = "pdf_text"
+    else:
+        text = _image_text(data)
+        source = "ocr"
 
+    log.debug("Extracted %d chars from %s", len(text), source)
+
+    # Try context-based parsing
     try:
-        return BillParseResult(monthly_kwh=_parse_kwh(text))
+        kwh, confidence = _extract_kwh_with_context(text)
+
+        return BillParseResult(
+            monthly_kwh=kwh,
+            confidence=confidence,
+            source=source
+        )
+
     except ValueError:
+        log.warning("No kWh found in parsed text")
+
         raise HTTPException(
             422,
-            "Could not extract kWh from this bill — please enter your monthly units manually.",
+            "Could not extract consumption. Please enter your kWh manually."
         )

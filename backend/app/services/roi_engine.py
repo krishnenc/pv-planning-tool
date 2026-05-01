@@ -1,7 +1,7 @@
 """Financial returns: costs, savings, payback, and 25-year ROI."""
 from dataclasses import dataclass
 
-from app.config import settings
+from app.config import settings, Settings
 
 
 @dataclass
@@ -15,9 +15,9 @@ class FinancialResult:
     roi_25yr_pct: float
 
 
-def compute(monthly_bill_rs: float, pv_kw: float, battery_cost_rs: float) -> FinancialResult:
+def compute(monthly_bill_rs: float, pv_kw: float, battery_cost_rs: float, cfg: Settings = settings) -> FinancialResult:
     """Compute all financial metrics for a given system configuration."""
-    s = settings
+    s = cfg
     system_cost = round(pv_kw * 1000 * s.average_system_cost_rs_wp, 2)
     total_cost = round(system_cost + battery_cost_rs, 2)
 

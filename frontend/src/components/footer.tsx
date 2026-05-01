@@ -11,7 +11,7 @@ export function Footer() {
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
                 <Sun className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-sm">SolarIQ Mauritius</span>
+              <span className="font-bold text-sm text-primary">SolarMoris</span>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">
               Independent solar feasibility tool for Mauritius homeowners and
@@ -70,7 +70,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-6 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-muted-foreground">
-          <p>© 2026 SolarIQ Mauritius. For informational purposes only.</p>
+          <p>© 2026 SolarMoris. For informational purposes only.</p>
           <p>Tariff data sourced from CEB Mauritius · Updated January 2026</p>
         </div>
       </div>

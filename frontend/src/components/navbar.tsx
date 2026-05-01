@@ -11,11 +11,7 @@ export function Navbar() {
             <Sun className="h-5 w-5 text-primary-foreground" />
           </div>
           <span className="font-bold text-lg tracking-tight">
-            <span className="text-primary">Solar</span>
-            <span className="text-foreground">IQ</span>
-            <span className="ml-1 text-xs font-normal text-muted-foreground">
-              Mauritius
-            </span>
+            <span className="text-primary">SolarMoris</span>
           </span>
         </div>
 

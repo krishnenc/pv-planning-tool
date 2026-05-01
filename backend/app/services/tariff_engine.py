@@ -1,7 +1,7 @@
 """CEB 2026 progressive domestic tariff calculator."""
 from dataclasses import dataclass
 
-from app.config import settings
+from app.config import settings, Settings
 
 
 @dataclass
@@ -17,9 +17,9 @@ class TariffBreakdown:
     total_rs: float
 
 
-def compute_bill(monthly_kwh: float) -> TariffBreakdown:
+def compute_bill(monthly_kwh: float, cfg: Settings = settings) -> TariffBreakdown:
     """Apply the four-band CEB progressive tariff to a monthly consumption figure."""
-    s = settings
+    s = cfg
     b1 = min(monthly_kwh, s.ceb_band_1_limit_kwh)
     b2 = min(
         max(monthly_kwh - s.ceb_band_1_limit_kwh, 0.0),

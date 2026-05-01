@@ -23,6 +23,44 @@ export interface BillParseResponse {
   estimated: boolean
 }
 
+export interface AppConfig {
+  ceb_band_1_limit_kwh: number
+  ceb_band_1_rate: number
+  ceb_band_2_limit_kwh: number
+  ceb_band_2_rate: number
+  ceb_band_3_limit_kwh: number
+  ceb_band_3_rate: number
+  ceb_band_4_rate: number
+  solar_irradiance_kwh_m2_day: number
+  system_losses: number
+  average_system_cost_rs_wp: number
+  battery_cost_rs_kwh: number
+  solar_panel_wattage: number
+  solar_panel_footprint_m2: number
+  grid_offset_factor: number
+  project_lifetime_years: number
+}
+
+export const CONFIG_KEY = "solariq_config"
+
+export const DEFAULT_CONFIG: AppConfig = {
+  ceb_band_1_limit_kwh: 100,
+  ceb_band_1_rate: 5.40,
+  ceb_band_2_limit_kwh: 300,
+  ceb_band_2_rate: 8.10,
+  ceb_band_3_limit_kwh: 600,
+  ceb_band_3_rate: 11.35,
+  ceb_band_4_rate: 16.20,
+  solar_irradiance_kwh_m2_day: 5.2,
+  system_losses: 0.20,
+  average_system_cost_rs_wp: 55.0,
+  battery_cost_rs_kwh: 28000.0,
+  solar_panel_wattage: 400,
+  solar_panel_footprint_m2: 2.0,
+  grid_offset_factor: 0.85,
+  project_lifetime_years: 25,
+}
+
 export interface CalculationRequest {
   monthly_kwh: number
   roof_area_m2?: number | null
@@ -56,6 +94,15 @@ const BASE = "/api/backend"
 class ApiClient {
   private getToken(): string | null {
     return typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+  }
+
+  private getStoredConfig(): AppConfig | null {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(CONFIG_KEY) : null
+      return raw ? (JSON.parse(raw) as AppConfig) : null
+    } catch {
+      return null
+    }
   }
 
   private async uploadRequest<T>(path: string, formData: FormData): Promise<T> {
@@ -116,10 +163,15 @@ class ApiClient {
   }
 
   calculate(data: CalculationRequest) {
+    const config_overrides = this.getStoredConfig()
     return this.request<CalculationResponse>("/api/v1/calculate", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, ...(config_overrides ? { config_overrides } : {}) }),
     })
+  }
+
+  getConfig() {
+    return this.request<AppConfig>("/api/v1/config")
   }
 
   uploadBill(file: File): Promise<BillParseResponse> {

@@ -2,7 +2,14 @@ import dataclasses
 
 from fastapi import APIRouter
 
-from app.schemas.calculation import CalculationRequest, CalculationResponse, RoofFeasibility
+from app.config import settings
+from app.schemas.calculation import (
+    AppConfigResponse,
+    CalculationRequest,
+    CalculationResponse,
+    ConfigOverrides,
+    RoofFeasibility,
+)
 from app.services import (
     battery_engine,
     explainability,
@@ -16,19 +23,33 @@ from app.services import (
 router = APIRouter(tags=["calculations"])
 
 
+def _make_cfg(overrides: ConfigOverrides | None):
+    """Merge per-request config overrides onto the server defaults."""
+    if overrides is None:
+        return settings
+    delta = overrides.model_dump(exclude_none=True)
+    return settings.model_copy(update=delta) if delta else settings
+
+
+@router.get("/config", response_model=AppConfigResponse)
+async def get_config() -> AppConfigResponse:
+    """Return the server's default values for all user-adjustable parameters."""
+    return AppConfigResponse(**{k: getattr(settings, k) for k in AppConfigResponse.model_fields})
+
+
 @router.post("/calculate", response_model=CalculationResponse)
 async def calculate(body: CalculationRequest) -> CalculationResponse:
+    cfg     = _make_cfg(body.config_overrides)
     load    = load_engine.analyse(body.monthly_kwh)
-    tariff  = tariff_engine.compute_bill(body.monthly_kwh)
-    solar   = solar_engine.size_system(load.daily_kwh)
-    roof    = surface_area.evaluate(solar.pv_kw, body.roof_area_m2)
-    battery = battery_engine.size_battery(load.daily_kwh, body.include_battery)
-    roi     = roi_engine.compute(tariff.total_rs, roof.pv_kw, battery.cost_rs)
+    tariff  = tariff_engine.compute_bill(body.monthly_kwh, cfg)
+    solar   = solar_engine.size_system(load.daily_kwh, cfg)
+    roof    = surface_area.evaluate(solar.pv_kw, body.roof_area_m2, cfg)
+    battery = battery_engine.size_battery(load.daily_kwh, body.include_battery, cfg)
+    roi     = roi_engine.compute(tariff.total_rs, roof.pv_kw, battery.cost_rs, cfg)
 
     expl = None
     if body.include_explanations:
-        raw = explainability.explain_all(body.monthly_kwh, tariff, load, solar, battery, roof, roi)
-        # Convert service-layer dataclasses to plain dicts for Pydantic validation
+        raw = explainability.explain_all(body.monthly_kwh, tariff, load, solar, battery, roof, roi, cfg)
         expl = {k: dataclasses.asdict(v) for k, v in raw.items()}
 
     return CalculationResponse(

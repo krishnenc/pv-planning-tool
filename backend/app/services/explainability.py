@@ -1,7 +1,7 @@
 """Structured formula/step explanations for each calculated metric."""
 from dataclasses import dataclass, field
 
-from app.config import settings
+from app.config import settings, Settings
 from app.services.battery_engine import BatteryResult
 from app.services.load_engine import LoadProfile
 from app.services.roi_engine import FinancialResult
@@ -36,22 +36,23 @@ def explain_all(
     battery: BatteryResult,
     roof: RoofAssessment,
     roi: FinancialResult,
+    cfg: Settings = settings,
 ) -> dict[str, MetricExplanation]:
     return {
-        "pv_kw":           _pv(load, solar),
-        "panels":          _panels(solar, roof),
-        "battery":         _battery(load, battery),
-        "system_cost":     _system_cost(roof, battery, roi),
-        "roof_required":   _roof(roof),
-        "monthly_bill":    _bill(monthly_kwh, tariff),
-        "monthly_savings": _savings(tariff, roi),
+        "pv_kw":           _pv(load, solar, cfg),
+        "panels":          _panels(solar, roof, cfg),
+        "battery":         _battery(load, battery, cfg),
+        "system_cost":     _system_cost(roof, battery, roi, cfg),
+        "roof_required":   _roof(roof, cfg),
+        "monthly_bill":    _bill(monthly_kwh, tariff, cfg),
+        "monthly_savings": _savings(tariff, roi, cfg),
         "payback":         _payback(roi),
-        "roi_25yr":        _roi(roi),
+        "roi_25yr":        _roi(roi, cfg),
     }
 
 
-def _pv(load: LoadProfile, solar: SolarSizing) -> MetricExplanation:
-    s = settings
+def _pv(load: LoadProfile, solar: SolarSizing, cfg: Settings = settings) -> MetricExplanation:
+    s = cfg
     return MetricExplanation(
         key="pv_kw",
         label="PV Capacity",
@@ -79,8 +80,8 @@ def _pv(load: LoadProfile, solar: SolarSizing) -> MetricExplanation:
     )
 
 
-def _panels(solar: SolarSizing, roof: RoofAssessment) -> MetricExplanation:
-    s = settings
+def _panels(solar: SolarSizing, roof: RoofAssessment, cfg: Settings = settings) -> MetricExplanation:
+    s = cfg
     raw = solar.pv_kw * 1000 / s.solar_panel_wattage
     return MetricExplanation(
         key="panels",
@@ -99,8 +100,8 @@ def _panels(solar: SolarSizing, roof: RoofAssessment) -> MetricExplanation:
     )
 
 
-def _battery(load: LoadProfile, battery: BatteryResult) -> MetricExplanation:
-    s = settings
+def _battery(load: LoadProfile, battery: BatteryResult, cfg: Settings = settings) -> MetricExplanation:
+    s = cfg
     if not battery.included:
         return MetricExplanation(
             key="battery",
@@ -132,8 +133,8 @@ def _battery(load: LoadProfile, battery: BatteryResult) -> MetricExplanation:
     )
 
 
-def _system_cost(roof: RoofAssessment, battery: BatteryResult, roi: FinancialResult) -> MetricExplanation:
-    s = settings
+def _system_cost(roof: RoofAssessment, battery: BatteryResult, roi: FinancialResult, cfg: Settings = settings) -> MetricExplanation:
+    s = cfg
     steps = [
         ExplainStep(
             "System cost",
@@ -170,8 +171,8 @@ def _system_cost(roof: RoofAssessment, battery: BatteryResult, roi: FinancialRes
     )
 
 
-def _roof(roof: RoofAssessment) -> MetricExplanation:
-    s = settings
+def _roof(roof: RoofAssessment, cfg: Settings = settings) -> MetricExplanation:
+    s = cfg
     return MetricExplanation(
         key="roof_required",
         label="Required Roof Area",
@@ -192,8 +193,8 @@ def _roof(roof: RoofAssessment) -> MetricExplanation:
     )
 
 
-def _bill(monthly_kwh: float, tariff: TariffBreakdown) -> MetricExplanation:
-    s = settings
+def _bill(monthly_kwh: float, tariff: TariffBreakdown, cfg: Settings = settings) -> MetricExplanation:
+    s = cfg
     return MetricExplanation(
         key="monthly_bill",
         label="Monthly Bill",
@@ -233,8 +234,8 @@ def _bill(monthly_kwh: float, tariff: TariffBreakdown) -> MetricExplanation:
     )
 
 
-def _savings(tariff: TariffBreakdown, roi: FinancialResult) -> MetricExplanation:
-    s = settings
+def _savings(tariff: TariffBreakdown, roi: FinancialResult, cfg: Settings = settings) -> MetricExplanation:
+    s = cfg
     return MetricExplanation(
         key="monthly_savings",
         label="Monthly Savings",
@@ -281,8 +282,8 @@ def _payback(roi: FinancialResult) -> MetricExplanation:
     )
 
 
-def _roi(roi: FinancialResult) -> MetricExplanation:
-    s = settings
+def _roi(roi: FinancialResult, cfg: Settings = settings) -> MetricExplanation:
+    s = cfg
     lifetime = roi.annual_savings_rs * s.project_lifetime_years
     net = lifetime - roi.total_cost_rs
     return MetricExplanation(

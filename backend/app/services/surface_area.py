@@ -2,7 +2,7 @@
 import math
 from dataclasses import dataclass
 
-from app.config import settings
+from app.config import settings, Settings
 
 
 @dataclass
@@ -14,9 +14,9 @@ class RoofAssessment:
     pv_kw: float  # may be adjusted downward when roof is limited
 
 
-def evaluate(pv_kw: float, roof_area_m2: float | None) -> RoofAssessment:
+def evaluate(pv_kw: float, roof_area_m2: float | None, cfg: Settings = settings) -> RoofAssessment:
     """Assess whether the required PV system fits the available roof space."""
-    s = settings
+    s = cfg
     count = math.ceil(pv_kw * 1000 / s.solar_panel_wattage)
     required = round(count * s.solar_panel_footprint_m2, 1)
 

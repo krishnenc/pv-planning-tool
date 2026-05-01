@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Sun, Upload, Plus, Trash2, Loader2, CheckCircle2 } from "lucide-react"
+import { Sun, Upload, Plus, Trash2, Loader2, CheckCircle2, Settings, LogOut } from "lucide-react"
 import { api, BillParseResponse } from "@/lib/api"
+import { useAuth } from "@/contexts/auth-context"
 import {
   Card,
   CardContent,
@@ -155,6 +156,7 @@ function loadInputs(): SavedInputs | null {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { isAuthenticated, logout } = useAuth()
   const nextId = useRef(SEED_APPLIANCES.length + 1)
 
   // Energy
@@ -184,6 +186,7 @@ export default function DashboardPage() {
   // Calculation
   const [isCalculating, setIsCalculating] = useState(false)
   const [calcError, setCalcError] = useState<string | null>(null)
+  const [hasCustomConfig] = useState(() => localStorage.getItem("solariq_config") !== null)
 
   // Bill upload
   type UploadStatus = "idle" | "uploading" | "success" | "error"
@@ -192,6 +195,14 @@ export default function DashboardPage() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [detectedKwh, setDetectedKwh] = useState<number | null>(savedDetected)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const kwhInputRef  = useRef<HTMLInputElement>(null)
+
+  const enterManually = useCallback(() => {
+    setAdvancedMode(false)
+    setUploadStatus("idle")
+    setDetectedKwh(null)
+    setTimeout(() => kwhInputRef.current?.focus(), 0)
+  }, [])
 
   // ── Appliance helpers ──────────────────────────────────────────────────────
 
@@ -296,19 +307,38 @@ export default function DashboardPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Sun className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">
-              <span className="text-primary">Solar</span>
-              <span className="text-foreground">IQ</span>
-              <span className="ml-1 text-xs font-normal text-muted-foreground">
-                Mauritius
-              </span>
-            </span>
+            <span className="font-bold text-lg text-primary">SolarMoris</span>
           </a>
 
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-xs text-muted-foreground mr-1">
               Step 1 of 3 — Energy inputs
             </span>
+            <a
+              href="/settings"
+              title="Calculation settings"
+              className={cn(
+                "inline-flex items-center justify-center h-8 w-8 rounded-md transition-colors",
+                "hover:bg-accent hover:text-accent-foreground",
+                hasCustomConfig
+                  ? "text-amber-600 bg-amber-50 border border-amber-200"
+                  : "text-muted-foreground"
+              )}
+            >
+              <Settings className="h-4 w-4" />
+            </a>
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { logout(); router.push("/") }}
+                className="gap-1.5 text-muted-foreground"
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </Button>
+            )}
             <Button
               size="sm"
               disabled={!canSubmit || isCalculating}
@@ -353,15 +383,33 @@ export default function DashboardPage() {
           <CardContent className="space-y-5">
             {/* kWh input */}
             <div className="space-y-1.5">
-              <Label htmlFor="monthly-kwh">Units consumed (kWh)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="monthly-kwh">Units consumed (kWh)</Label>
+                {(advancedMode || uploadStatus === "success") && (
+                  <button
+                    type="button"
+                    onClick={enterManually}
+                    className="text-xs text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+                  >
+                    Enter manually instead
+                  </button>
+                )}
+              </div>
               <div className="relative max-w-xs">
                 <Input
+                  ref={kwhInputRef}
                   id="monthly-kwh"
                   type="number"
                   min="0"
                   placeholder="e.g. 350"
                   value={monthlyKwh}
-                  onChange={(e) => setMonthlyKwh(e.target.value)}
+                  onChange={(e) => {
+                    setMonthlyKwh(e.target.value)
+                    if (uploadStatus === "success") {
+                      setUploadStatus("idle")
+                      setDetectedKwh(null)
+                    }
+                  }}
                   disabled={advancedMode}
                   className="pr-14"
                 />
@@ -434,7 +482,7 @@ export default function DashboardPage() {
               {uploadStatus === "success" && (
                 <button
                   type="button"
-                  onClick={() => { setUploadStatus("idle"); setDetectedKwh(null) }}
+                  onClick={() => { setUploadStatus("idle"); setDetectedKwh(null); setMonthlyKwh("") }}
                   className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                 >
                   Upload a different bill

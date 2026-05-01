@@ -2,7 +2,8 @@
 
 import { type ReactNode, useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Sun, ArrowLeft, RefreshCw } from "lucide-react"
+import { Sun, ArrowLeft, RefreshCw, LogOut, ChevronRight } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 import {
   Card,
   CardContent,
@@ -145,6 +146,7 @@ const PIE_COLORS = ["#0d9488", "#e5e7eb"]
 
 export default function ResultsPage() {
   const router = useRouter()
+  const { isAuthenticated, logout } = useAuth()
   const [results, setResults] = useState<CalculationResponse | null>(null)
   const [simPvKw, setSimPvKw] = useState<number>(0)
   const [showAllDetails, setShowAllDetails] = useState(false)
@@ -274,15 +276,25 @@ export default function ResultsPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Sun className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">
-              <span className="text-primary">Solar</span>
-              <span className="text-foreground">IQ</span>
-              <span className="ml-1 text-xs font-normal text-muted-foreground">Mauritius</span>
-            </span>
+            <span className="font-bold text-lg text-primary">SolarMoris</span>
           </a>
-          <span className="hidden sm:inline text-xs text-muted-foreground">
-            Step 2 of 3 — Your results
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-xs text-muted-foreground">
+              Step 2 of 3 — Your results
+            </span>
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { logout(); router.push("/") }}
+                className="gap-1.5 text-muted-foreground"
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -916,7 +928,7 @@ Net gain      = Rs ${savings25yr.toLocaleString()} − Rs ${results.total_cost_r
         </Card>
 
         {/* ══ Actions ═════════════════════════════════════════════════════════ */}
-        <div className="flex items-center justify-between pb-10">
+        <div className="flex flex-wrap items-center gap-2 justify-between pb-10">
           <Button
             variant="outline"
             size="sm"
@@ -929,6 +941,15 @@ Net gain      = Rs ${savings25yr.toLocaleString()} − Rs ${results.total_cost_r
           <Button
             size="sm"
             className="gap-1.5"
+            onClick={() => router.push("/report")}
+          >
+            Full Report &amp; Action Plan
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground"
             onClick={() => {
               localStorage.removeItem("solariq_results")
               localStorage.removeItem("solariq_inputs")

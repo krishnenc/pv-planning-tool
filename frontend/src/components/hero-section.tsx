@@ -16,7 +16,7 @@ export function HeroSection() {
       <div className="container flex flex-col items-center text-center gap-6">
         <Badge variant="solar" className="gap-1.5 py-1">
           <Sun className="h-3.5 w-3.5" />
-          CEB 2026 Tariffs · Mauritius
+          CEB 2026 Tariffs · Moris
         </Badge>
 
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl max-w-4xl">

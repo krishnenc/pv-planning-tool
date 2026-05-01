@@ -18,6 +18,10 @@ vi.mock("@/lib/api", () => ({
   api: { calculate: mockCalculate, uploadBill: mockUploadBill },
 }))
 
+vi.mock("@/contexts/auth-context", () => ({
+  useAuth: () => ({ logout: vi.fn(), isAuthenticated: true }),
+}))
+
 import DashboardPage from "@/app/dashboard/page"
 
 // ── Setup / teardown ─────────────────────────────────────────────────────────

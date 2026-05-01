@@ -2,11 +2,56 @@ from pydantic import BaseModel, field_validator
 from typing import Optional
 
 
+class ConfigOverrides(BaseModel):
+    """Per-request overrides for any setting in app.config.Settings.
+    All fields are optional; omitted fields fall back to the server default."""
+    # CEB tariff bands
+    ceb_band_1_limit_kwh: Optional[int] = None
+    ceb_band_1_rate: Optional[float] = None
+    ceb_band_2_limit_kwh: Optional[int] = None
+    ceb_band_2_rate: Optional[float] = None
+    ceb_band_3_limit_kwh: Optional[int] = None
+    ceb_band_3_rate: Optional[float] = None
+    ceb_band_4_rate: Optional[float] = None
+    # Solar resource
+    solar_irradiance_kwh_m2_day: Optional[float] = None
+    system_losses: Optional[float] = None
+    # Costs
+    average_system_cost_rs_wp: Optional[float] = None
+    battery_cost_rs_kwh: Optional[float] = None
+    # Panel specs
+    solar_panel_wattage: Optional[int] = None
+    solar_panel_footprint_m2: Optional[float] = None
+    # Financial
+    grid_offset_factor: Optional[float] = None
+    project_lifetime_years: Optional[int] = None
+
+
+class AppConfigResponse(BaseModel):
+    """All user-adjustable settings with their current (server default) values."""
+    ceb_band_1_limit_kwh: int
+    ceb_band_1_rate: float
+    ceb_band_2_limit_kwh: int
+    ceb_band_2_rate: float
+    ceb_band_3_limit_kwh: int
+    ceb_band_3_rate: float
+    ceb_band_4_rate: float
+    solar_irradiance_kwh_m2_day: float
+    system_losses: float
+    average_system_cost_rs_wp: float
+    battery_cost_rs_kwh: float
+    solar_panel_wattage: int
+    solar_panel_footprint_m2: float
+    grid_offset_factor: float
+    project_lifetime_years: int
+
+
 class CalculationRequest(BaseModel):
     monthly_kwh: float
     roof_area_m2: Optional[float] = None
     include_battery: bool = False
     include_explanations: bool = False
+    config_overrides: Optional[ConfigOverrides] = None
 
     @field_validator("monthly_kwh")
     @classmethod
