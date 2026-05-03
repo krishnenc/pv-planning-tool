@@ -1,11 +1,13 @@
 # SolarMoris 🇲🇺
+
 ### Hybrid Solar Feasibility & ROI Planning Tool — CEB 2026
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A full-stack web application that helps Mauritius homeowners evaluate the financial and environmental case for installing a solar PV system with optional battery storage. Enter your monthly electricity consumption (or upload a CEB bill), and the app produces a complete 25-year investment report in minutes.
+A full-stack web application that helps Mauritius homeowners evaluate the financial and environmental case for installing a solar PV system with optional battery storage. Enter your monthly electricity consumption (or upload a CEB bill), and the app produces a complete investment report in seconds.
 
 **Authors**
+
 - Krishnen Chedambarum — [krishnen.chedambarum@valid.com](mailto:krishnen.chedambarum@valid.com)
 - Sundeepsingh Neerunjun — [sundeepsingh.neerunjun@valid.com](mailto:sundeepsingh.neerunjun@valid.com)
 
@@ -53,10 +55,10 @@ The first build takes a few minutes (npm install + `next build` + Python deps + 
 
 ### 3. Open the app
 
-| Service | URL |
-|---------|-----|
-| App | http://localhost:3000 |
-| Backend API | http://localhost:8000 |
+| Service      | URL                        |
+| ------------ | -------------------------- |
+| App          | http://localhost:3000      |
+| Backend API  | http://localhost:8000      |
 | Swagger docs | http://localhost:8000/docs |
 
 ---
@@ -102,6 +104,7 @@ docker compose up --build frontend
 ```
 
 > **Tip:** For active frontend development, run `npm run dev` locally (outside Docker) and keep only the backend in Docker:
+>
 > ```bash
 > docker compose up backend        # backend on :8000
 > npm run dev --prefix frontend    # frontend on :3000 with hot reload
@@ -167,7 +170,7 @@ Step 3 — /report
 ## CEB 2026 Tariff Bands
 
 | Consumption   | Rate (Rs/kWh) |
-|---------------|---------------|
+| ------------- | ------------- |
 | 0 – 100 kWh   | 5.40          |
 | 101 – 300 kWh | 8.10          |
 | 301 – 600 kWh | 11.35         |
@@ -236,17 +239,17 @@ solarmoris/
 
 ## API Endpoints
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/health` | No | Liveness probe |
-| GET | `/api/v1/health/ready` | No | Readiness probe (DB ping) |
-| POST | `/api/v1/auth/register` | No | Create account → JWT tokens |
-| POST | `/api/v1/auth/login` | No | Authenticate → JWT tokens |
-| POST | `/api/v1/auth/forgot-password` | No | Generate reset token |
-| POST | `/api/v1/auth/reset-password` | No | Set new password with token |
-| GET | `/api/v1/config` | No | Current server constants |
-| POST | `/api/v1/calculate` | No | Solar feasibility calculation |
-| POST | `/api/v1/bill/upload` | No | Parse bill → monthly kWh |
+| Method | Path                           | Auth | Description                   |
+| ------ | ------------------------------ | ---- | ----------------------------- |
+| GET    | `/health`                      | No   | Liveness probe                |
+| GET    | `/api/v1/health/ready`         | No   | Readiness probe (DB ping)     |
+| POST   | `/api/v1/auth/register`        | No   | Create account → JWT tokens   |
+| POST   | `/api/v1/auth/login`           | No   | Authenticate → JWT tokens     |
+| POST   | `/api/v1/auth/forgot-password` | No   | Generate reset token          |
+| POST   | `/api/v1/auth/reset-password`  | No   | Set new password with token   |
+| GET    | `/api/v1/config`               | No   | Current server constants      |
+| POST   | `/api/v1/calculate`            | No   | Solar feasibility calculation |
+| POST   | `/api/v1/bill/upload`          | No   | Parse bill → monthly kWh      |
 
 Interactive docs: http://localhost:8000/docs
 
@@ -256,17 +259,17 @@ Interactive docs: http://localhost:8000/docs
 
 ### Backend (`backend/.env`)
 
-| Variable | Default | Notes |
-|----------|---------|-------|
-| `SECRET_KEY` | `insecure-dev-key` | **Change this.** Run `openssl rand -hex 32` |
-| `DATABASE_URL` | `sqlite+aiosqlite:///./solar_dev.db` | Switch to `postgresql+asyncpg://...` for prod |
-| `APP_ENV` | `development` | |
-| `ALLOWED_ORIGINS` | `["http://localhost:3000"]` | JSON array of allowed frontend URLs |
+| Variable          | Default                              | Notes                                         |
+| ----------------- | ------------------------------------ | --------------------------------------------- |
+| `SECRET_KEY`      | `insecure-dev-key`                   | **Change this.** Run `openssl rand -hex 32`   |
+| `DATABASE_URL`    | `sqlite+aiosqlite:///./solar_dev.db` | Switch to `postgresql+asyncpg://...` for prod |
+| `APP_ENV`         | `development`                        |                                               |
+| `ALLOWED_ORIGINS` | `["http://localhost:3000"]`          | JSON array of allowed frontend URLs           |
 
 ### Frontend (`frontend/.env.local`)
 
-| Variable | Default | Notes |
-|----------|---------|-------|
+| Variable              | Default                 | Notes                                      |
+| --------------------- | ----------------------- | ------------------------------------------ |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Backend URL — baked into the Next.js build |
 
 ---
@@ -294,8 +297,8 @@ See [`docs/deploy.md`](docs/deploy.md) for a step-by-step guide to deploying the
 
 ## Docs
 
-| Document | Description |
-|----------|-------------|
-| [`docs/architecture.md`](docs/architecture.md) | Full system architecture, request flows, DB schema, design decisions |
+| Document                                       | Description                                                           |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| [`docs/architecture.md`](docs/architecture.md) | Full system architecture, request flows, DB schema, design decisions  |
 | [`docs/presentation.md`](docs/presentation.md) | High-level presentation — rationale, features, diagrams, ROI examples |
-| [`docs/deploy.md`](docs/deploy.md) | Vercel + Railway deployment guide |
+| [`docs/deploy.md`](docs/deploy.md)             | Vercel + Railway deployment guide                                     |
