@@ -293,14 +293,13 @@ venv/bin/pytest
 
 ## Deployment
 
-See [`docs/deploy.md`](docs/deploy.md) for a step-by-step guide to deploying the frontend on **Vercel** and the backend on **Railway** (including PostgreSQL setup and Tesseract OCR configuration).
+See [`docs/deploy.md`](docs/deploy.md) for a step-by-step guide to deploying the application on **Google Cloud**.
 
 ---
 
 ## Docs
 
-| Document                                       | Description                                                           |
-| ---------------------------------------------- | --------------------------------------------------------------------- |
-| [`docs/architecture.md`](docs/architecture.md) | Full system architecture, request flows, DB schema, design decisions  |
-| [`docs/presentation.md`](docs/presentation.md) | High-level presentation — rationale, features, diagrams, ROI examples |
-| [`docs/deploy.md`](docs/deploy.md)             | Vercel + Railway deployment guide                                     |
+| Document                                       | Description                                                          |
+| ---------------------------------------------- | -------------------------------------------------------------------- |
+| [`docs/architecture.md`](docs/architecture.md) | Full system architecture, request flows, DB schema, design decisions |
+| [`docs/deploy.md`](docs/deploy.md)             | Vercel + Railway deployment guide                                    |
