@@ -45,7 +45,7 @@ async def calculate(body: CalculationRequest) -> CalculationResponse:
     solar   = solar_engine.size_system(load.daily_kwh, cfg)
     roof    = surface_area.evaluate(solar.pv_kw, body.roof_area_m2, cfg)
     battery = battery_engine.size_battery(load.daily_kwh, body.include_battery, cfg)
-    roi     = roi_engine.compute(tariff.total_rs, roof.pv_kw, battery.cost_rs, cfg)
+    roi     = roi_engine.compute(tariff.total_rs, load.monthly_kwh, roof.pv_kw, battery.cost_rs, cfg)
 
     expl = None
     if body.include_explanations:
@@ -68,6 +68,7 @@ async def calculate(body: CalculationRequest) -> CalculationResponse:
         total_cost_rs=roi.total_cost_rs,
         monthly_savings_rs=roi.monthly_savings_rs,
         annual_savings_rs=roi.annual_savings_rs,
+        export_credit_rs=roi.export_credit_rs,
         payback_years=roi.payback_years,
         roi_25yr_pct=roi.roi_25yr_pct,
         explanations=expl,

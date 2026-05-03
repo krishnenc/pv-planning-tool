@@ -16,7 +16,7 @@ def _run(monthly_kwh=350, roof_area=None, include_battery=False):
     solar   = solar_engine.size_system(load.daily_kwh)
     roof    = surface_area.evaluate(solar.pv_kw, roof_area)
     battery = battery_engine.size_battery(load.daily_kwh, include_battery)
-    roi     = roi_engine.compute(tariff.total_rs, roof.pv_kw, battery.cost_rs)
+    roi     = roi_engine.compute(tariff.total_rs, monthly_kwh, roof.pv_kw, battery.cost_rs)
     return explain_all(monthly_kwh, tariff, load, solar, battery, roof, roi)
 
 

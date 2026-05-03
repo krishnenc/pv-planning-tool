@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sun, ArrowLeft, RotateCcw, Save, CheckCircle2 } from "lucide-react"
+import { SiteFooter } from "@/components/site-footer"
 import { api, AppConfig, CONFIG_KEY, DEFAULT_CONFIG } from "@/lib/api"
+import { trackEvent } from "@/components/google-analytics"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,8 +37,13 @@ function fromForm(form: FormValues): AppConfig {
     battery_cost_rs_kwh:     parseFloat(form.battery_cost_rs_kwh),
     solar_panel_wattage:     parseInt(form.solar_panel_wattage, 10),
     solar_panel_footprint_m2: parseFloat(form.solar_panel_footprint_m2),
-    grid_offset_factor:      parseFloat(form.grid_offset_factor),
-    project_lifetime_years:  parseInt(form.project_lifetime_years, 10),
+    grid_offset_factor:               parseFloat(form.grid_offset_factor),
+    project_lifetime_years:           parseInt(form.project_lifetime_years, 10),
+    discount_rate:                    parseFloat(form.discount_rate),
+    inflation_rate:                   parseFloat(form.inflation_rate),
+    solar_panel_degradation_per_year: parseFloat(form.solar_panel_degradation_per_year),
+    maintenance_cost_rs_kw_year:      parseFloat(form.maintenance_cost_rs_kw_year),
+    ceb_export_tariff_rs_kwh:         parseFloat(form.ceb_export_tariff_rs_kwh),
   }
 }
 
@@ -122,41 +129,47 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function SettingsPage() {
   const router = useRouter()
   const [defaults, setDefaults] = useState<AppConfig>(DEFAULT_CONFIG)
-  const [form, setForm] = useState<FormValues>(() => toForm(loadSaved() ?? DEFAULT_CONFIG))
-  const [saved, setSaved] = useState(false)
+  const [form, setForm] = useState<FormValues>(toForm(DEFAULT_CONFIG))
+  const [dirty, setDirty] = useState(false)       // true only when user edits a field
+  const [justSaved, setJustSaved] = useState(false) // true briefly after clicking Save
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Load localStorage only after mount to avoid SSR/client hydration mismatch
+    const persisted = loadSaved()
+    if (persisted) setForm(toForm(persisted))
+
     api.getConfig()
       .then((cfg) => {
         setDefaults(cfg)
-        // Only apply fetched defaults if the user has no saved config
-        if (!loadSaved()) setForm(toForm(cfg))
+        if (!persisted) setForm(toForm(cfg))
       })
       .catch(() => { /* stay with bundled defaults */ })
       .finally(() => setLoading(false))
   }, [])
 
   const set = (id: keyof AppConfig, val: string) => {
-    setSaved(false)
+    setDirty(true)
+    setJustSaved(false)
     setForm((prev) => ({ ...prev, [id]: val }))
   }
 
   const handleSave = () => {
     localStorage.setItem(CONFIG_KEY, JSON.stringify(fromForm(form)))
-    setSaved(true)
+    setDirty(false)
+    setJustSaved(true)
+    trackEvent("settings_saved")
   }
 
   const handleReset = () => {
     localStorage.removeItem(CONFIG_KEY)
     setForm(toForm(defaults))
-    setSaved(false)
+    setDirty(false)
+    setJustSaved(false)
+    trackEvent("settings_reset")
   }
 
   const defaultForm = toForm(defaults)
-  const hasCustom = Object.keys(form).some(
-    (k) => form[k as keyof AppConfig] !== defaultForm[k as keyof AppConfig]
-  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -190,13 +203,13 @@ export default function SettingsPage() {
         </div>
 
         {/* Status banner */}
-        {hasCustom && !saved && (
+        {dirty && (
           <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
             <span className="font-medium">Unsaved changes</span>
             <span className="text-amber-600">— click Save to apply them to future calculations.</span>
           </div>
         )}
-        {saved && (
+        {justSaved && (
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span className="font-medium">Settings saved.</span>
@@ -231,6 +244,9 @@ export default function SettingsPage() {
           <FieldRow id="ceb_band_4_rate" label="Band 4 rate"
             description="Rs per kWh for consumption above 600 kWh"
             unit="Rs/kWh" step="0.01" value={form.ceb_band_4_rate} defaultValue={defaultForm.ceb_band_4_rate} onChange={set} />
+          <FieldRow id="ceb_export_tariff_rs_kwh" label="Net metering export rate"
+            description="CEB credit for solar surplus exported to the grid"
+            unit="Rs/kWh" step="0.01" value={form.ceb_export_tariff_rs_kwh} defaultValue={defaultForm.ceb_export_tariff_rs_kwh} onChange={set} />
         </Section>
 
         {/* ── Solar Resource ───────────────────────────────────────────────── */}
@@ -271,6 +287,18 @@ export default function SettingsPage() {
           <FieldRow id="project_lifetime_years" label="Project lifetime"
             description="Analysis horizon for ROI calculation (typically 25 years for solar panels)"
             unit="years" step="1" min="1" value={form.project_lifetime_years} defaultValue={defaultForm.project_lifetime_years} onChange={set} />
+          <FieldRow id="discount_rate" label="Discount rate (WACC)"
+            description="Opportunity cost of capital for NPV and discounted payback — what you could earn investing elsewhere (0.0–1.0)"
+            unit="fraction" step="0.01" min="0" value={form.discount_rate} defaultValue={defaultForm.discount_rate} onChange={set} />
+          <FieldRow id="inflation_rate" label="Inflation rate"
+            description="Annual electricity tariff inflation used to grow year-on-year savings in projections (Mauritius CPI ≈ 4.5%)"
+            unit="fraction" step="0.005" min="0" value={form.inflation_rate} defaultValue={defaultForm.inflation_rate} onChange={set} />
+          <FieldRow id="solar_panel_degradation_per_year" label="Panel degradation"
+            description="Annual output loss from panel aging (0.5%/yr is the monocrystalline warranty standard)"
+            unit="fraction/yr" step="0.001" min="0" value={form.solar_panel_degradation_per_year} defaultValue={defaultForm.solar_panel_degradation_per_year} onChange={set} />
+          <FieldRow id="maintenance_cost_rs_kw_year" label="Annual maintenance"
+            description="Yearly servicing cost per installed kW — cleaning, inverter check, minor repairs"
+            unit="Rs/kW/yr" step="100" min="0" value={form.maintenance_cost_rs_kw_year} defaultValue={defaultForm.maintenance_cost_rs_kw_year} onChange={set} />
         </Section>
 
         {/* Actions */}
@@ -279,8 +307,8 @@ export default function SettingsPage() {
             <RotateCcw className="h-3.5 w-3.5" />
             Reset to defaults
           </Button>
-          <Button size="sm" onClick={handleSave} className={cn("gap-1.5", saved && "bg-emerald-600 hover:bg-emerald-700")}>
-            {saved ? (
+          <Button size="sm" onClick={handleSave} className={cn("gap-1.5", justSaved && "bg-emerald-600 hover:bg-emerald-700")}>
+            {justSaved ? (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Saved
@@ -293,6 +321,7 @@ export default function SettingsPage() {
             )}
           </Button>
         </div>
+        <SiteFooter />
       </main>
     </div>
   )

@@ -9,6 +9,7 @@ from app.routers.health import router as health_router
 from app.routers.auth import router as auth_router
 from app.routers.calculations import router as calculations_router
 from app.routers.bill import router as bill_router
+from app.routers.contact import router as contact_router
 
 
 @asynccontextmanager
@@ -53,6 +54,9 @@ app.include_router(calculations_router, prefix=settings.api_v1_prefix)
 
 # Bill upload endpoint: POST /api/v1/bill/upload
 app.include_router(bill_router, prefix=settings.api_v1_prefix)
+
+# Contact form endpoint: POST /api/v1/contact
+app.include_router(contact_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/")

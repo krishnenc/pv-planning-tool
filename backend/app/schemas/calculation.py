@@ -25,6 +25,12 @@ class ConfigOverrides(BaseModel):
     # Financial
     grid_offset_factor: Optional[float] = None
     project_lifetime_years: Optional[int] = None
+    discount_rate: Optional[float] = None
+    inflation_rate: Optional[float] = None
+    solar_panel_degradation_per_year: Optional[float] = None
+    maintenance_cost_rs_kw_year: Optional[float] = None
+    # CEB net-metering export tariff
+    ceb_export_tariff_rs_kwh: Optional[float] = None
 
 
 class AppConfigResponse(BaseModel):
@@ -44,6 +50,11 @@ class AppConfigResponse(BaseModel):
     solar_panel_footprint_m2: float
     grid_offset_factor: float
     project_lifetime_years: int
+    discount_rate: float
+    inflation_rate: float
+    solar_panel_degradation_per_year: float
+    maintenance_cost_rs_kw_year: float
+    ceb_export_tariff_rs_kwh: float
 
 
 class CalculationRequest(BaseModel):
@@ -95,6 +106,7 @@ class CalculationResponse(BaseModel):
     total_cost_rs: float
     monthly_savings_rs: float
     annual_savings_rs: float
+    export_credit_rs: float
     payback_years: float
     roi_25yr_pct: float
     explanations: Optional[dict[str, MetricExplanation]] = None

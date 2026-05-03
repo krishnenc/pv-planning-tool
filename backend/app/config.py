@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     discount_rate: float = 0.08                 # 8% WACC
     project_lifetime_years: int = 25
 
+    # Contact form — email notifications (all optional; omit to disable email)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    contact_email: str = ""   # destination address for contact notifications
+
 
 def get_settings() -> Settings:
     return Settings()

@@ -45,7 +45,7 @@ def explain_all(
         "system_cost":     _system_cost(roof, battery, roi, cfg),
         "roof_required":   _roof(roof, cfg),
         "monthly_bill":    _bill(monthly_kwh, tariff, cfg),
-        "monthly_savings": _savings(tariff, roi, cfg),
+        "monthly_savings": _savings(monthly_kwh, tariff, roi, cfg),
         "payback":         _payback(roi),
         "roi_25yr":        _roi(roi, cfg),
     }
@@ -234,20 +234,39 @@ def _bill(monthly_kwh: float, tariff: TariffBreakdown, cfg: Settings = settings)
     )
 
 
-def _savings(tariff: TariffBreakdown, roi: FinancialResult, cfg: Settings = settings) -> MetricExplanation:
+def _savings(monthly_kwh: float, tariff: TariffBreakdown, roi: FinancialResult, cfg: Settings = settings) -> MetricExplanation:
+    from app.services import tariff_engine as te
     s = cfg
+    remaining_kwh = round(monthly_kwh * (1 - s.grid_offset_factor), 2)
+    new_bill_rs   = te.compute_bill(remaining_kwh, cfg).total_rs
     return MetricExplanation(
         key="monthly_savings",
         label="Monthly Savings",
-        formula="monthly_bill × grid_offset_factor",
+        formula="(original_bill − bill_on_remaining_grid) + CEB export credit",
         inputs=[
-            {"label": "Monthly bill", "value": f"Rs {tariff.total_rs:.2f}"},
-            {"label": "Solar offset", "value": f"{s.grid_offset_factor * 100:.0f} %"},
+            {"label": "Monthly bill",              "value": f"Rs {tariff.total_rs:.2f}"},
+            {"label": "Self-consumption rate",     "value": f"{s.grid_offset_factor * 100:.0f} %"},
+            {"label": "CEB export tariff",         "value": f"Rs {s.ceb_export_tariff_rs_kwh:.2f} / kWh"},
         ],
         steps=[
             ExplainStep(
+                "Remaining grid kWh (night)",
+                f"{monthly_kwh:.0f} × (1 − {s.grid_offset_factor})",
+                f"{remaining_kwh:.1f} kWh",
+            ),
+            ExplainStep(
+                "New bill on remaining grid",
+                f"CEB tariff({remaining_kwh:.1f} kWh)",
+                f"Rs {new_bill_rs:.2f}",
+            ),
+            ExplainStep(
+                "Export credit (net metering)",
+                f"{remaining_kwh:.1f} kWh × Rs {s.ceb_export_tariff_rs_kwh:.2f}",
+                f"Rs {roi.export_credit_rs:.2f}",
+            ),
+            ExplainStep(
                 "Monthly savings",
-                f"Rs {tariff.total_rs:.2f} × {s.grid_offset_factor}",
+                f"Rs {tariff.total_rs:.2f} − Rs {new_bill_rs:.2f} + Rs {roi.export_credit_rs:.2f}",
                 f"Rs {roi.monthly_savings_rs:.2f}",
             ),
             ExplainStep(

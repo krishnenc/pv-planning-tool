@@ -2,8 +2,8 @@
 
 import { type ReactNode, useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Sun, ArrowLeft, RefreshCw, LogOut, ChevronRight } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
+import { SiteFooter } from "@/components/site-footer"
+import { Sun, ArrowLeft, RefreshCw, Settings, ChevronRight, HelpCircle } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { CalculationResponse } from "@/lib/api"
+import { CONFIG_KEY, DEFAULT_CONFIG } from "@/lib/api"
 import {
   ResponsiveContainer,
   AreaChart,
@@ -146,11 +147,11 @@ const PIE_COLORS = ["#0d9488", "#e5e7eb"]
 
 export default function ResultsPage() {
   const router = useRouter()
-  const { isAuthenticated, logout } = useAuth()
   const [results, setResults] = useState<CalculationResponse | null>(null)
   const [simPvKw, setSimPvKw] = useState<number>(0)
   const [showAllDetails, setShowAllDetails] = useState(false)
   const [openExplainers, setOpenExplainers] = useState<Set<string>>(new Set())
+  const [hasCustomConfig, setHasCustomConfig] = useState(false)
 
   function toggle(id: string) {
     setOpenExplainers(prev => {
@@ -170,6 +171,13 @@ export default function ResultsPage() {
     if (!next) setOpenExplainers(new Set())
   }
 
+  const lifetimeYears: number = (() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(CONFIG_KEY) : null
+      return raw ? (JSON.parse(raw).project_lifetime_years ?? DEFAULT_CONFIG.project_lifetime_years) : DEFAULT_CONFIG.project_lifetime_years
+    } catch { return DEFAULT_CONFIG.project_lifetime_years }
+  })()
+
   useEffect(() => {
     const raw = localStorage.getItem("solariq_results")
     if (!raw) {
@@ -183,6 +191,7 @@ export default function ResultsPage() {
     } catch {
       router.replace("/dashboard")
     }
+    setHasCustomConfig(localStorage.getItem("solariq_config") !== null)
   }, [router])
 
   const simMetrics = useMemo(() => {
@@ -195,14 +204,15 @@ export default function ResultsPage() {
         simData: [] as { year: number; cumSavings: number; systemCost: number }[],
       }
     const simPanelCount = Math.ceil((simPvKw * 1000) / 400)
-    const simSystemCost = Math.round(simPvKw * 1000 * 55)
+    const costPerWp = results.system_cost_rs / (results.pv_kw * 1000)
+    const simSystemCost = Math.round(simPvKw * 1000 * costPerWp + results.battery_cost_rs)
     const simMonthlySavings = Math.round(
-      results.monthly_bill_rs * Math.min(simPvKw / results.pv_kw, 1) * 0.85,
+      results.monthly_savings_rs * Math.min(simPvKw / results.pv_kw, 1),
     )
     const simAnnualSavings = simMonthlySavings * 12
     const simPayback =
       simAnnualSavings > 0 ? (simSystemCost / simAnnualSavings).toFixed(1) : "—"
-    const simData = Array.from({ length: 26 }, (_, y) => ({
+    const simData = Array.from({ length: lifetimeYears + 1 }, (_, y) => ({
       year: y,
       cumSavings: simAnnualSavings * y,
       systemCost: simSystemCost,
@@ -231,7 +241,7 @@ export default function ResultsPage() {
 
   // ── Chart 1 data ──────────────────────────────────────────────────────────
 
-  const roiData = Array.from({ length: 26 }, (_, y) => ({
+  const roiData = Array.from({ length: lifetimeYears + 1 }, (_, y) => ({
     year: y,
     cumSavings: results.annual_savings_rs * y,
     systemCost: results.total_cost_rs,
@@ -262,7 +272,7 @@ export default function ResultsPage() {
   const b3rs = b3u * 11.35
   const b4rs = b4u * 16.2
 
-  const savings25yr = results.annual_savings_rs * 25
+  const savings25yr = results.annual_savings_rs * lifetimeYears
   const netGain = savings25yr - results.total_cost_rs
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -280,21 +290,36 @@ export default function ResultsPage() {
             <span role="img" aria-label="Mauritius">🇲🇺</span>
           </a>
           <div className="flex items-center gap-2">
+            <a
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </a>
             <span className="hidden sm:inline text-xs text-muted-foreground">
               Step 2 of 3 — Your results
             </span>
-            {isAuthenticated && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { logout(); router.push("/") }}
-                className="gap-1.5 text-muted-foreground"
-                title="Sign out"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Sign out</span>
-              </Button>
-            )}
+            <a
+              href="/faq"
+              title="Help & FAQ"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </a>
+            <a
+              href="/settings"
+              title="Calculation settings"
+              className={cn(
+                "inline-flex items-center justify-center h-8 w-8 rounded-md transition-colors",
+                "hover:bg-accent hover:text-accent-foreground",
+                hasCustomConfig
+                  ? "text-amber-600 bg-amber-50 border border-amber-200"
+                  : "text-muted-foreground"
+              )}
+            >
+              <Settings className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </header>
@@ -627,13 +652,13 @@ Total                                    Rs ${results.monthly_bill_rs.toFixed(2)
                 }
               />
               <MetricBlock
-                label="25-yr ROI"
+                label={`${lifetimeYears}-yr ROI`}
                 value={`${results.roi_25yr_pct.toFixed(0)}%`}
                 valueClass="text-green-700"
                 infoBtn={
                   <InfoBtn
                     id="roi_25yr"
-                    label="25-year ROI"
+                    label={`${lifetimeYears}-year ROI`}
                     active={isOpen("roi_25yr")}
                     onToggle={toggle}
                   />
@@ -643,16 +668,24 @@ Total                                    Rs ${results.monthly_bill_rs.toFixed(2)
 
             {isOpen("monthly_savings") && (
               <ExplainerPanel
-                formula="Monthly savings = monthly_bill × solar_offset"
+                formula="(original_bill − bill_on_remaining_grid) + CEB export credit"
                 inputs={[
-                  { k: "Monthly bill", v: `Rs ${results.monthly_bill_rs.toLocaleString()}` },
-                  { k: "Solar offset", v: "85 % of bill" },
+                  { k: "Monthly bill",          v: `Rs ${results.monthly_bill_rs.toLocaleString()}` },
+                  { k: "Self-consumption rate", v: "85 % of solar used on-site" },
+                  { k: "CEB export tariff",     v: "Rs 5.10 / kWh (net metering)" },
                 ]}
-                steps={`Savings  = Rs ${results.monthly_bill_rs.toLocaleString()} × 0.85
-         = Rs ${results.monthly_savings_rs.toLocaleString()}
+                steps={`Remaining grid  = ${results.monthly_kwh} × 15% = ${(results.monthly_kwh * 0.15).toFixed(1)} kWh
+New grid bill   = CEB tariff(${(results.monthly_kwh * 0.15).toFixed(1)} kWh)
+                = Rs ${(results.monthly_bill_rs - results.monthly_savings_rs + results.export_credit_rs).toFixed(2)}
 
-Annual   = Rs ${results.monthly_savings_rs.toLocaleString()} × 12
-         = Rs ${results.annual_savings_rs.toLocaleString()}`}
+Export credit   = ${(results.monthly_kwh * 0.15).toFixed(1)} kWh × Rs 5.10
+                = Rs ${results.export_credit_rs.toFixed(2)}
+
+Monthly savings = Rs ${results.monthly_bill_rs.toFixed(2)} − Rs ${(results.monthly_bill_rs - results.monthly_savings_rs + results.export_credit_rs).toFixed(2)} + Rs ${results.export_credit_rs.toFixed(2)}
+                = Rs ${results.monthly_savings_rs.toFixed(2)}
+
+Annual savings  = Rs ${results.monthly_savings_rs.toFixed(2)} × 12
+                = Rs ${results.annual_savings_rs.toFixed(2)}`}
               />
             )}
 
@@ -670,19 +703,19 @@ Annual   = Rs ${results.monthly_savings_rs.toLocaleString()} × 12
 
             {isOpen("roi_25yr") && (
               <ExplainerPanel
-                formula="25-yr ROI (%) = (total_savings − cost) ÷ cost × 100"
+                formula={`${lifetimeYears}-yr ROI (%) = (total_savings − cost) ÷ cost × 100`}
                 inputs={[
                   { k: "Annual savings", v: `Rs ${results.annual_savings_rs.toLocaleString()}` },
-                  { k: "Horizon", v: "25 years" },
+                  { k: "Horizon", v: `${lifetimeYears} years` },
                   { k: "Total investment", v: `Rs ${results.total_cost_rs.toLocaleString()}` },
                 ]}
-                steps={`25-yr savings = Rs ${results.annual_savings_rs.toLocaleString()} × 25
+                steps={`${lifetimeYears}-yr savings = Rs ${results.annual_savings_rs.toLocaleString()} × ${lifetimeYears}
               = Rs ${savings25yr.toLocaleString()}
 
 Net gain      = Rs ${savings25yr.toLocaleString()} − Rs ${results.total_cost_rs.toLocaleString()}
               = Rs ${netGain.toLocaleString()}
 
-25-yr ROI     = Rs ${netGain.toLocaleString()} ÷ Rs ${results.total_cost_rs.toLocaleString()} × 100
+${lifetimeYears}-yr ROI     = Rs ${netGain.toLocaleString()} ÷ Rs ${results.total_cost_rs.toLocaleString()} × 100
               = ${results.roi_25yr_pct.toFixed(1)} %`}
               />
             )}
@@ -704,7 +737,7 @@ Net gain      = Rs ${savings25yr.toLocaleString()} − Rs ${results.total_cost_r
               <div>
                 <CardTitle className="text-base">ROI Over Time</CardTitle>
                 <CardDescription>
-                  Cumulative savings vs. total investment over 25 years
+                  Cumulative savings vs. total investment over {lifetimeYears} years
                 </CardDescription>
               </div>
             </div>
@@ -961,6 +994,7 @@ Net gain      = Rs ${savings25yr.toLocaleString()} − Rs ${results.total_cost_r
             New assessment
           </Button>
         </div>
+        <SiteFooter />
       </main>
     </div>
   )

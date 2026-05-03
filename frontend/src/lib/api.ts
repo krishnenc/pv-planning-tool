@@ -39,6 +39,11 @@ export interface AppConfig {
   solar_panel_footprint_m2: number
   grid_offset_factor: number
   project_lifetime_years: number
+  discount_rate: number
+  inflation_rate: number
+  solar_panel_degradation_per_year: number
+  maintenance_cost_rs_kw_year: number
+  ceb_export_tariff_rs_kwh: number
 }
 
 export const CONFIG_KEY = "solariq_config"
@@ -59,6 +64,11 @@ export const DEFAULT_CONFIG: AppConfig = {
   solar_panel_footprint_m2: 2.0,
   grid_offset_factor: 0.85,
   project_lifetime_years: 25,
+  discount_rate: 0.08,
+  inflation_rate: 0.045,
+  solar_panel_degradation_per_year: 0.005,
+  maintenance_cost_rs_kw_year: 1200,
+  ceb_export_tariff_rs_kwh: 5.10,
 }
 
 export interface CalculationRequest {
@@ -85,6 +95,7 @@ export interface CalculationResponse {
   total_cost_rs: number
   monthly_savings_rs: number
   annual_savings_rs: number
+  export_credit_rs: number
   payback_years: number
   roi_25yr_pct: number
 }
@@ -178,6 +189,19 @@ class ApiClient {
     const form = new FormData()
     form.append("file", file)
     return this.uploadRequest<BillParseResponse>("/api/v1/bill/upload", form)
+  }
+
+  submitContact(data: {
+    name: string
+    email: string
+    subject: string
+    message: string
+    honeypot?: string
+  }): Promise<{ message: string }> {
+    return this.request<{ message: string }>("/api/v1/contact", {
+      method: "POST",
+      body: JSON.stringify({ honeypot: "", ...data }),
+    })
   }
 }
 

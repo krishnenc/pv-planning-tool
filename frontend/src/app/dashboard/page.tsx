@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Sun, Upload, Plus, Trash2, Loader2, CheckCircle2, Settings, LogOut } from "lucide-react"
+import { Sun, Upload, Plus, Trash2, Loader2, CheckCircle2, Settings, HelpCircle } from "lucide-react"
+import { SiteFooter } from "@/components/site-footer"
 import { api, BillParseResponse } from "@/lib/api"
-import { useAuth } from "@/contexts/auth-context"
+import { trackEvent } from "@/components/google-analytics"
 import {
   Card,
   CardContent,
@@ -231,49 +232,53 @@ function loadInputs(): SavedInputs | null {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { isAuthenticated, logout } = useAuth()
   const nextId = useRef(SEED_APPLIANCES.length + 1)
 
-  // Energy
-  const [monthlyKwh, setMonthlyKwh] = useState(() => loadInputs()?.monthlyKwh ?? "")
-  const [advancedMode, setAdvancedMode] = useState(() => loadInputs()?.advancedMode ?? false)
-
-  // Appliances
-  const [appliances, setAppliances] = useState<Appliance[]>(() => {
-    const saved = loadInputs()?.appliances
-    if (saved?.length) {
-      nextId.current = Math.max(...saved.map((a) => a.id)) + 1
-      return saved.map((a) => ({
-        ...(a as Appliance),
-        preset: (a as Appliance).preset ?? "other",  // migrate pre-dropdown entries
-      }))
-    }
-    return SEED_APPLIANCES.map((a, i) => ({ ...a, id: i + 1 }))
-  })
-
-  // EV
-  const [hasEV, setHasEV] = useState(() => loadInputs()?.hasEV ?? false)
-  const [evKmPerDay, setEvKmPerDay] = useState(() => loadInputs()?.evKmPerDay ?? "")
-
-  // Roof
-  const [roofArea, setRoofArea] = useState(() => loadInputs()?.roofArea ?? "")
-
-  // Battery
-  const [includeBattery, setIncludeBattery] = useState(() => loadInputs()?.includeBattery ?? false)
-
-  // Calculation
+  // All state is initialised with SSR-safe defaults.
+  // localStorage is read in useEffect (client-only) to avoid hydration mismatches.
+  const [monthlyKwh, setMonthlyKwh] = useState("")
+  const [advancedMode, setAdvancedMode] = useState(false)
+  const [appliances, setAppliances] = useState<Appliance[]>(
+    () => SEED_APPLIANCES.map((a, i) => ({ ...a, id: i + 1 }))
+  )
+  const [hasEV, setHasEV] = useState(false)
+  const [evKmPerDay, setEvKmPerDay] = useState("")
+  const [roofArea, setRoofArea] = useState("")
+  const [includeBattery, setIncludeBattery] = useState(false)
   const [isCalculating, setIsCalculating] = useState(false)
   const [calcError, setCalcError] = useState<string | null>(null)
-  const [hasCustomConfig] = useState(() => typeof window !== "undefined" && localStorage.getItem("solariq_config") !== null)
+  const [hasCustomConfig, setHasCustomConfig] = useState(false)
 
-  // Bill upload
   type UploadStatus = "idle" | "uploading" | "success" | "error"
-  const savedDetected = loadInputs()?.detectedKwh ?? null
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>(savedDetected !== null ? "success" : "idle")
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle")
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [detectedKwh, setDetectedKwh] = useState<number | null>(savedDetected)
+  const [detectedKwh, setDetectedKwh] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const kwhInputRef  = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const saved = loadInputs()
+    if (saved) {
+      if (saved.monthlyKwh) setMonthlyKwh(saved.monthlyKwh)
+      setAdvancedMode(saved.advancedMode ?? false)
+      if (saved.appliances?.length) {
+        nextId.current = Math.max(...saved.appliances.map((a) => a.id)) + 1
+        setAppliances(saved.appliances.map((a) => ({
+          ...(a as Appliance),
+          preset: (a as Appliance).preset ?? "other",
+        })))
+      }
+      setHasEV(saved.hasEV ?? false)
+      if (saved.evKmPerDay) setEvKmPerDay(saved.evKmPerDay)
+      if (saved.roofArea) setRoofArea(saved.roofArea)
+      setIncludeBattery(saved.includeBattery ?? false)
+      if (saved.detectedKwh != null) {
+        setDetectedKwh(saved.detectedKwh)
+        setUploadStatus("success")
+      }
+    }
+    setHasCustomConfig(localStorage.getItem("solariq_config") !== null)
+  }, [])
 
   const enterManually = useCallback(() => {
     setAdvancedMode(false)
@@ -365,6 +370,13 @@ export default function DashboardPage() {
           detectedKwh,
         } satisfies SavedInputs),
       )
+      trackEvent("calculate", {
+        monthly_kwh: results.monthly_kwh,
+        pv_kw: results.pv_kw,
+        include_battery: includeBattery,
+        advanced_mode: advancedMode,
+        payback_years: results.payback_years,
+      })
       router.push("/results")
     } catch (err) {
       setCalcError(err instanceof Error ? err.message : "Calculation failed")
@@ -383,9 +395,11 @@ export default function DashboardPage() {
       setDetectedKwh(result.monthly_kwh)
       setMonthlyKwh(String(result.monthly_kwh))
       setUploadStatus("success")
+      trackEvent("bill_upload_success", { monthly_kwh: result.monthly_kwh })
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed")
       setUploadStatus("error")
+      trackEvent("bill_upload_error")
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ""
     }
@@ -411,6 +425,13 @@ export default function DashboardPage() {
               Step 1 of 3 — Energy inputs
             </span>
             <a
+              href="/faq"
+              title="Help & FAQ"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </a>
+            <a
               href="/settings"
               title="Calculation settings"
               className={cn(
@@ -423,16 +444,6 @@ export default function DashboardPage() {
             >
               <Settings className="h-4 w-4" />
             </a>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { logout(); router.push("/") }}
-              className="gap-1.5 text-muted-foreground"
-              title="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Sign out</span>
-            </Button>
             <Button
               size="sm"
               disabled={!canSubmit || isCalculating}
@@ -447,12 +458,19 @@ export default function DashboardPage() {
       <main className="container max-w-2xl py-8 space-y-5">
         {/* Page heading */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Solar Assessment
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">Solar Assessment</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">CEB Mauritius PV scheme 2026 for households</p>
           <p className="text-muted-foreground mt-1 text-sm">
-            Tell us about your energy usage and property — we'll size a hybrid
-            system and calculate your ROI.
+            Tell us about your energy usage and property — we'll size a{" "}
+            <a
+              href="https://ceb.mu/projects/solar-photovoltaic-scheme-for-households-2026"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              hybrid
+            </a>
+            {" "}system and calculate your ROI.
           </p>
         </div>
 
@@ -921,6 +939,7 @@ export default function DashboardPage() {
             {isCalculating ? "Calculating…" : "Calculate potential →"}
           </Button>
         </div>
+        <SiteFooter />
       </main>
     </div>
   )

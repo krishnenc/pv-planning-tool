@@ -1,7 +1,17 @@
 # SolarMoris 🇲🇺
 ### Hybrid Solar Feasibility & ROI Planning Tool — CEB 2026
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A full-stack web application that helps Mauritius homeowners evaluate the financial and environmental case for installing a solar PV system with optional battery storage. Enter your monthly electricity consumption (or upload a CEB bill), and the app produces a complete 25-year investment report in minutes.
+
+**Authors**
+- Krishnen Chedambarum — [krishnen.chedambarum@valid.com](mailto:krishnen.chedambarum@valid.com)
+- Sundeepsingh Neerunjun — [sundeepsingh.neerunjun@valid.com](mailto:sundeepsingh.neerunjun@valid.com)
+
+Developed as part of the MSc IIoT programme at **Université des Mascareignes**, Mauritius.
+
+Special thanks to **Dr Jay Doorga** ([LinkedIn](https://mu.linkedin.com/in/jay-doorga-23a8a91b8)) for his invaluable support and guidance.
 
 ---
 

@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Sun, ArrowLeft, ChevronDown, ChevronUp, Printer, RefreshCw, LogOut } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
-import { type CalculationResponse } from "@/lib/api"
+import { Sun, ArrowLeft, ChevronDown, ChevronUp, Printer, RefreshCw, HelpCircle, Settings } from "lucide-react"
+import { SiteFooter } from "@/components/site-footer"
+import { type CalculationResponse, CONFIG_KEY, DEFAULT_CONFIG } from "@/lib/api"
 import {
   buildCashFlows,
   calcNPV,
@@ -108,12 +108,33 @@ const NEXT_STEPS = [
 
 export default function ReportPage() {
   const router = useRouter()
-  const { isAuthenticated, logout } = useAuth()
-
   const [results, setResults]               = useState<CalculationResponse | null>(null)
   const [showFinancing, setShowFinancing]   = useState(false)
   const [loanTermYears, setLoanTermYears]   = useState(10)
   const [annualInterest, setAnnualInterest] = useState(7.0)
+  const [hasCustomConfig, setHasCustomConfig] = useState(false)
+
+  const { lifetimeYears, discountRate, inflationRate, degradationPerYear, maintenanceRsPerKwYr } = (() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(CONFIG_KEY) : null
+      const cfg = raw ? JSON.parse(raw) : null
+      return {
+        lifetimeYears:       cfg?.project_lifetime_years            ?? DEFAULT_CONFIG.project_lifetime_years,
+        discountRate:        cfg?.discount_rate                      ?? DEFAULT_CONFIG.discount_rate,
+        inflationRate:       cfg?.inflation_rate                     ?? DEFAULT_CONFIG.inflation_rate,
+        degradationPerYear:  cfg?.solar_panel_degradation_per_year   ?? DEFAULT_CONFIG.solar_panel_degradation_per_year,
+        maintenanceRsPerKwYr: cfg?.maintenance_cost_rs_kw_year       ?? DEFAULT_CONFIG.maintenance_cost_rs_kw_year,
+      }
+    } catch {
+      return {
+        lifetimeYears:        DEFAULT_CONFIG.project_lifetime_years,
+        discountRate:         DEFAULT_CONFIG.discount_rate,
+        inflationRate:        DEFAULT_CONFIG.inflation_rate,
+        degradationPerYear:   DEFAULT_CONFIG.solar_panel_degradation_per_year,
+        maintenanceRsPerKwYr: DEFAULT_CONFIG.maintenance_cost_rs_kw_year,
+      }
+    }
+  })()
 
   useEffect(() => {
     try {
@@ -123,14 +144,20 @@ export default function ReportPage() {
     } catch {
       router.replace("/results")
     }
+    setHasCustomConfig(localStorage.getItem("solariq_config") !== null)
   }, [router])
 
   const report = useMemo(() => {
     if (!results) return null
     const rows             = buildCashFlows({
-      annual_savings_rs: results.annual_savings_rs,
-      total_cost_rs:     results.total_cost_rs,
-      pv_kw:             results.pv_kw,
+      annual_savings_rs:    results.annual_savings_rs,
+      total_cost_rs:        results.total_cost_rs,
+      pv_kw:                results.pv_kw,
+      years:                lifetimeYears,
+      discountRate,
+      inflationRate,
+      degradationPerYear,
+      maintenanceRsPerKwYr,
     })
     const npv              = calcNPV(rows)
     const irr              = calcIRR(results.total_cost_rs, rows)
@@ -165,21 +192,36 @@ export default function ReportPage() {
             <span role="img" aria-label="Mauritius">🇲🇺</span>
           </a>
           <div className="flex items-center gap-2">
+            <a
+              href="/results"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </a>
             <span className="hidden sm:inline text-xs text-muted-foreground">
               Step 3 of 3 — Investment Report
             </span>
-            {isAuthenticated && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { logout(); router.push("/") }}
-                className="gap-1.5 text-muted-foreground"
-                title="Sign out"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Sign out</span>
-              </Button>
-            )}
+            <a
+              href="/faq"
+              title="Help & FAQ"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </a>
+            <a
+              href="/settings"
+              title="Calculation settings"
+              className={cn(
+                "inline-flex items-center justify-center h-8 w-8 rounded-md transition-colors",
+                "hover:bg-accent hover:text-accent-foreground",
+                hasCustomConfig
+                  ? "text-amber-600 bg-amber-50 border border-amber-200"
+                  : "text-muted-foreground"
+              )}
+            >
+              <Settings className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </header>
@@ -199,7 +241,7 @@ export default function ReportPage() {
             <div className="flex items-start gap-3">
               <IconBadge emoji="📋" bg="bg-blue-50" text="text-blue-600" />
               <div>
-                <CardTitle className="text-base">25-Year Cash Flow</CardTitle>
+                <CardTitle className="text-base">{lifetimeYears}-Year Cash Flow</CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Accounts for 0.5%/yr panel degradation, {(4.5).toFixed(1)}% CPI tariff inflation, and Rs 1,200/kW/yr maintenance
                 </p>
@@ -282,15 +324,32 @@ export default function ReportPage() {
               />
               <Metric
                 label="Discounted Payback"
-                value={report.discountedPayback !== null ? `${report.discountedPayback.toFixed(1)} yrs` : "> 25 yrs"}
+                value={report.discountedPayback !== null ? `${report.discountedPayback.toFixed(1)} yrs` : `> ${lifetimeYears} yrs`}
                 sub="Time-value-adjusted break-even"
               />
               <Metric
                 label="Total Lifetime Net Gain"
                 value={rs(report.lifetimeNetGain)}
                 highlight="green"
-                sub="Nominal 25-yr profit after maintenance"
+                sub={`Nominal ${lifetimeYears}-yr profit after maintenance`}
               />
+            </div>
+
+            {/* Net metering breakdown */}
+            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 space-y-2 text-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Year-1 savings breakdown</p>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Bill reduction (self-consumed solar)</span>
+                <span className="font-semibold tabular-nums">{rs(results.monthly_savings_rs - results.export_credit_rs)}/mo</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">CEB net metering export credit</span>
+                <span className="font-semibold tabular-nums text-emerald-700">+{rs(results.export_credit_rs)}/mo</span>
+              </div>
+              <div className="flex justify-between border-t border-border/60 pt-2">
+                <span className="font-medium">Total monthly savings</span>
+                <span className="font-bold tabular-nums text-emerald-700">{rs(results.monthly_savings_rs)}/mo</span>
+              </div>
             </div>
 
             {/* Dual-axis ComposedChart */}
@@ -412,11 +471,15 @@ export default function ReportPage() {
               <div className="rounded-lg bg-muted/40 px-4 py-3 space-y-2.5 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Monthly EMI</span>
-                  <span className="font-semibold tabular-nums">{rs(report.emi)}</span>
+                  <span className="font-semibold tabular-nums">−{rs(report.emi)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Monthly savings (Year 1)</span>
-                  <span className="font-semibold tabular-nums text-emerald-700">{rs(results.monthly_savings_rs)}</span>
+                  <span className="text-muted-foreground">Bill reduction (solar)</span>
+                  <span className="font-semibold tabular-nums text-emerald-700">+{rs(results.monthly_savings_rs - results.export_credit_rs)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Net metering export credit</span>
+                  <span className="font-semibold tabular-nums text-emerald-700">+{rs(results.export_credit_rs)}</span>
                 </div>
                 <div className="flex justify-between border-t border-border/60 pt-2">
                   <span className="text-muted-foreground">Net monthly impact</span>
@@ -466,7 +529,7 @@ export default function ReportPage() {
                 highlight="green"
               />
               <Metric
-                label="25-year CO₂ saved"
+                label={`${lifetimeYears}-year CO₂ saved`}
                 value={`${(report.co2.lifetime25yrCO2Kg / 1000).toFixed(1)} t`}
                 unit="CO₂"
                 highlight="green"
@@ -560,6 +623,7 @@ export default function ReportPage() {
             New assessment
           </Button>
         </div>
+        <SiteFooter />
       </main>
     </div>
   )

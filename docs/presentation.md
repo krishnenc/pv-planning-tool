@@ -142,13 +142,18 @@ journey
 
 ### Why accuracy matters
 
-Most online solar calculators use a flat electricity rate and a simple payback formula. SolarMoris models the investment the way a financial analyst would.
+Most online solar calculators use a flat electricity rate and a simple payback formula. SolarMoris models the investment the way a financial analyst would — including CEB net metering.
 
 ```mermaid
 flowchart TD
     A[Monthly kWh consumption] --> B[CEB Progressive Tariff\n4 bands — Rs 5.40 to Rs 16.20/kWh]
     B --> C[Actual monthly bill Rs]
-    C --> D[Annual savings at 85%\ngrid offset factor]
+
+    C --> NM[Net Metering Split\n85% self-consumed on-site\n15% exported to CEB grid]
+    NM --> D1[Bill reduction\nRe-bill remaining 15% kWh\nat progressive tariff]
+    NM --> D2[Export credit\nRs 5.10 / kWh\nCEB net metering tariff]
+    D1 --> S[Monthly savings\nbill − new_bill + export_credit]
+    D2 --> S
 
     E[Daily kWh] --> F[Solar sizing\n5.2 kWh/m²/day irradiance\n20% panel efficiency\n20% system losses]
     F --> G[PV system in kW\nPanel count]
@@ -157,7 +162,7 @@ flowchart TD
     I[Battery option\nRs 28,000/kWh] --> H
     H --> J[Total capital cost Rs]
 
-    D --> K[25-Year Cash Flow Model]
+    S --> K[25-Year Cash Flow Model]
     J --> K
     K --> L[Year 1–25 rows\nDegradation 0.5%/yr\nInflation 4.5%/yr\nDiscount rate 8%/yr]
     L --> M[NPV — Net Present Value]
@@ -165,6 +170,8 @@ flowchart TD
     L --> O[Discounted Payback Year]
     L --> P[CO₂ Offset — Mauritius\n0.38 kg per kWh]
 
+    style NM fill:#ccfbf1,stroke:#0d9488
+    style S fill:#dcfce7,stroke:#16a34a
     style K fill:#fef9c3,stroke:#ca8a04
     style L fill:#fef9c3,stroke:#ca8a04
 ```
@@ -176,6 +183,8 @@ flowchart TD
 | Inflation rate | 4.5% | Mauritius CPI |
 | Discount rate (WACC) | 8.0% | Cost of capital |
 | Panel degradation | 0.5%/yr | Manufacturer data |
+| Self-consumption rate | 85% | On-site use + battery storage |
+| CEB export tariff | Rs 5.10/kWh | CEB net metering scheme |
 | System cost | Rs 55/Wp | 2026 Mauritius benchmark |
 | Battery cost | Rs 28,000/kWh | 2026 market rate |
 | Maintenance | Rs 1,200/kW/yr | Industry standard |
@@ -206,6 +215,14 @@ xychart-beta
 
 A flat-rate tool using 8.10 Rs/kWh would estimate Rs 2,835 — a 4% error that compounds over 25 years into a significant NPV miscalculation.
 
+**Net metering adds a second savings stream.** Under the CEB net metering scheme, the 15% of solar energy exported to the grid earns a credit at Rs 5.10/kWh. For the 350 kWh/month example above, that is an additional Rs 267.75/month on top of the bill reduction — a component that flat-rate tools omit entirely.
+
+| Savings component | Calculation | Amount (Rs/month) |
+|-------------------|-------------|-------------------|
+| Bill reduction (re-billed remaining 52.5 kWh) | CEB tariff(52.5 kWh) subtracted | ~2,443 |
+| Export credit (52.5 kWh × Rs 5.10) | net metering tariff | ~268 |
+| **Total monthly savings** | | **~2,712** |
+
 ---
 
 ## Slide 8 — The 25-Year Report
@@ -228,7 +245,7 @@ flowchart LR
 
 **The financing section** is particularly useful: it answers the question most homeowners actually ask — *"If I take a bank loan, am I cash-flow positive from day one?"*
 
-At 7% interest over 10 years on a Rs 280,000 system, the monthly EMI is approximately Rs 3,254. For a 350 kWh/month household saving Rs 2,320/month, the net monthly cost is only Rs 934 — often less than the household's current bill increase year-on-year.
+At 7% interest over 10 years on a Rs 280,000 system, the monthly EMI is approximately Rs 3,254. For a 350 kWh/month household saving Rs 2,712/month (bill reduction + CEB net metering export credit), the net monthly cost is only Rs 542 — typically less than the household's current bill increase year-on-year.
 
 ---
 
@@ -264,6 +281,7 @@ The confidence score prevents silent errors: if the parser matched on a generic 
 | **25-year model runs in the browser** | Results update instantly when financing sliders change |
 | **Config overrides** per session | Power users can adjust tariff rates or system costs without admin access |
 | **CEB 2026 4-band tariff** (not flat rate) | Accurate bill estimate — especially important for high-consumption homes |
+| **CEB net metering modelled correctly** (bill reduction + export credit, not a flat multiplier) | Captures both savings streams; adds ~Rs 268/month for a 350 kWh household |
 | **Discounted payback** (not simple payback) | Accounts for time value of money — more conservative and honest |
 | **Print to PDF** (native browser) | No server-side rendering cost; works offline after page load |
 
@@ -352,7 +370,7 @@ Each step is actionable — the app does not just present numbers, it tells the 
 
 ### What sets it apart
 
-- **Accuracy:** CEB 2026 progressive tariff modelling, not a flat-rate approximation
+- **Accuracy:** CEB 2026 progressive tariff modelling + net metering export credit — not a flat-rate approximation
 - **Completeness:** From bill upload through to 25-year NPV, IRR, and financing in one session
 - **Transparency:** Step-by-step formula explanations; open methodology
 - **Actionability:** Closes with a concrete checklist, not just a number
@@ -367,9 +385,9 @@ For a median Mauritius household consuming **350 kWh/month**:
 | System size | ~2.8 kW (7 panels) |
 | Roof required | ~14 m² |
 | Total cost | ~Rs 154,000 |
-| Monthly savings | ~Rs 2,320 |
-| Simple payback | ~5.5 years |
-| 25-year net gain | ~Rs 500,000+ |
+| Monthly savings | ~Rs 2,712 (bill reduction + net metering export credit) |
+| Simple payback | ~4.7 years |
+| 25-year net gain | ~Rs 650,000+ |
 | CO₂ saved (lifetime) | ~29 tonnes |
 
 ---
