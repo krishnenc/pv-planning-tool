@@ -4,7 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A full-stack web application that helps Mauritius homeowners evaluate the financial and environmental case for installing a solar PV system with optional battery storage. Enter your monthly electricity consumption (or upload a CEB bill), and the app produces a complete investment report in seconds.
+SolarMoris was built in response to the launch of the [CEB Solar Photovoltaic Scheme for Households 2026](https://ceb.mu/projects/solar-photovoltaic-scheme-for-households-2026) — a free tool to help Mauritian households understand whether the scheme makes financial sense for their home, before committing to an installation.
+
+Enter your monthly electricity consumption (or upload a CEB bill), and the app produces a complete investment report covering system sizing, payback period, NPV, IRR, and CO₂ savings.
 
 **Authors**
 
