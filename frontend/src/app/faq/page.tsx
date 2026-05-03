@@ -486,8 +486,8 @@ e.g.  11.7 kWh × Rs 28,000 = Rs 327,600`}
         a: (
           <>
             <p>
-              <strong>Usable area</strong> means the south- or north-facing sections
-              (ideally north-facing in Mauritius, which is in the southern hemisphere) that
+              <strong>Usable area</strong> means the north- or west-facing sections
+              (Mauritius is in the southern hemisphere, so north-facing roofs get the most sun) that
               are free of shading from chimneys, water tanks, and neighbouring trees.
             </p>
             <p>

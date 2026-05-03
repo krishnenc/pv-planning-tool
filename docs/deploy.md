@@ -228,11 +228,12 @@ cd /home/solarmoris/app/frontend
 
 cat > .env.local <<'EOF'
 NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_SITE_URL=https://yourdomain.com
 # Google Analytics 4 — leave blank to disable tracking
-NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+NEXT_PUBLIC_GA_MEASUREMENT_ID=
 EOF
 
-npm ci
+npm install
 npm run build
 ```
 
@@ -329,6 +330,7 @@ sudo certbot --nginx -d yourdomain.com
 ```
 
 Certbot will:
+
 - Obtain a certificate from Let's Encrypt
 - Automatically update the nginx config with TLS directives
 - Set up automatic renewal via a systemd timer
@@ -390,7 +392,7 @@ sudo systemctl restart solarmoris-backend
 # If frontend changed:
 sudo -i -u solarmoris
 cd /home/solarmoris/app/frontend
-npm ci
+npm install
 npm run build
 exit
 sudo systemctl restart solarmoris-frontend
@@ -404,25 +406,26 @@ Database schema is managed by `SQLModel.metadata.create_all` on startup — addi
 
 ### Backend (`backend/.env`)
 
-| Variable | Required | Notes |
-|---|---|---|
-| `SECRET_KEY` | Yes | 32-byte hex — generate with `openssl rand -hex 32` |
-| `DATABASE_URL` | Yes | `sqlite+aiosqlite:////home/solarmoris/app/backend/solar.db` |
-| `APP_ENV` | Yes | `production` |
-| `ALLOWED_ORIGINS` | Yes | JSON array: `["https://yourdomain.com"]` |
-| `APP_DEBUG` | No | Leave unset (defaults to `false`) |
-| `SMTP_HOST` | No | SMTP server for contact form email notifications (e.g. `smtp.gmail.com`) |
-| `SMTP_PORT` | No | SMTP port — defaults to `587` (STARTTLS) |
-| `SMTP_USERNAME` | No | SMTP login — usually your email address |
-| `SMTP_PASSWORD` | No | SMTP password or app password |
-| `CONTACT_EMAIL` | No | Destination address for contact form notifications; if unset email is disabled and messages are stored in the DB only |
+| Variable          | Required | Notes                                                                                                                 |
+| ----------------- | -------- | --------------------------------------------------------------------------------------------------------------------- |
+| `SECRET_KEY`      | Yes      | 32-byte hex — generate with `openssl rand -hex 32`                                                                    |
+| `DATABASE_URL`    | Yes      | `sqlite+aiosqlite:////home/solarmoris/app/backend/solar.db`                                                           |
+| `APP_ENV`         | Yes      | `production`                                                                                                          |
+| `ALLOWED_ORIGINS` | Yes      | JSON array: `["https://yourdomain.com"]`                                                                              |
+| `APP_DEBUG`       | No       | Leave unset (defaults to `false`)                                                                                     |
+| `SMTP_HOST`       | No       | SMTP server for contact form email notifications (e.g. `smtp.gmail.com`)                                              |
+| `SMTP_PORT`       | No       | SMTP port — defaults to `587` (STARTTLS)                                                                              |
+| `SMTP_USERNAME`   | No       | SMTP login — usually your email address                                                                               |
+| `SMTP_PASSWORD`   | No       | SMTP password or app password                                                                                         |
+| `CONTACT_EMAIL`   | No       | Destination address for contact form notifications; if unset email is disabled and messages are stored in the DB only |
 
 ### Frontend (`frontend/.env.local`)
 
-| Variable | Required | Notes |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:8000` — Next.js rewrites proxy this server-side, so `localhost` is correct even in production |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | No | GA4 Measurement ID (`G-XXXXXXXXXX`). Leave blank to disable analytics. Must be set before `npm run build`. |
+| Variable                        | Required | Notes                                                                                                           |
+| ------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`           | Yes      | `http://localhost:8000` — Next.js rewrites proxy this server-side, so `localhost` is correct even in production |
+| `NEXT_PUBLIC_SITE_URL`          | Yes      | Production domain e.g. `https://yourdomain.com` — used for sitemap, canonical URLs and OG tags. Must be set before `npm run build`. |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | No       | GA4 Measurement ID (`G-XXXXXXXXXX`). Leave blank to disable analytics. Must be set before `npm run build`.      |
 
 ---
 

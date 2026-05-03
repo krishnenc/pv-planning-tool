@@ -849,7 +849,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <CardDescription>
-                  Available south- or west-facing unshaded roof space
+                  Available north- or west-facing unshaded roof space
                 </CardDescription>
               </div>
             </div>
@@ -858,7 +858,7 @@ export default function DashboardPage() {
           <CardContent className="space-y-1.5">
             <div className="flex items-center gap-2">
               <Label htmlFor="roof-area">Usable roof area</Label>
-              <Tooltip content="We use this to cap the maximum number of panels and verify your roof can accommodate the recommended system. South- and west-facing, unshaded sections count best." />
+              <Tooltip content="We use this to cap the maximum number of panels and verify your roof can accommodate the recommended system. North- and west-facing, unshaded sections count best — Mauritius is in the southern hemisphere." />
             </div>
 
             <div className="relative max-w-[11rem]">
